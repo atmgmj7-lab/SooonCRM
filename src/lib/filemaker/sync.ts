@@ -17,7 +17,6 @@ export async function syncListRecords(sinceModified?: string) {
     const result = await fmGetRecords(layout, {
       _offset: offset,
       _limit: BATCH_SIZE,
-      _sort: [{ fieldName: '修正タイムスタンプ', sortOrder: 'ascend' }],
     })
 
     const records = result.response?.data ?? []
@@ -34,7 +33,7 @@ export async function syncListRecords(sinceModified?: string) {
 
         const mapped = mapFMListToSupabase(fields)
 
-        const { error } = await supabase
+        const { data: upsertedRecord, error } = await supabase
           .from('list_records')
           .upsert({
             tenant_id: TENANT_ID,
@@ -45,11 +44,23 @@ export async function syncListRecords(sinceModified?: string) {
             onConflict: 'fm_record_id',
             ignoreDuplicates: false,
           })
+          .select('id, webhook_lead_id')
+          .single()
 
         if (error) {
           console.error(`list upsert error [${fmRecordId}]:`, error.message)
           totalErrors++
         } else {
+          if (upsertedRecord?.webhook_lead_id) {
+            await supabase
+              .from('webhook_leads')
+              .update({
+                fm_record_id: fmRecordId,
+                fm_synced_at: new Date().toISOString(),
+              })
+              .eq('id', upsertedRecord.webhook_lead_id)
+              .is('fm_record_id', null)
+          }
           totalSynced++
         }
       } catch (e) {
@@ -97,7 +108,6 @@ export async function syncCalls(sinceModified?: string) {
     const result = await fmGetRecords(layout, {
       _offset: offset,
       _limit: BATCH_SIZE,
-      _sort: [{ fieldName: '修正タイムスタンプ', sortOrder: 'ascend' }],
     })
 
     const records = result.response?.data ?? []

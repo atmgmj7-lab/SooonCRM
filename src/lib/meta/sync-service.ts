@@ -93,12 +93,25 @@ export async function syncRangeForTenant(
   const insights = await getDailyInsights(since, until, 'adset')
   const spendRows: AdSpendDailyInsert[] = []
 
+  // 二重計上防止：同じリードが複数 action_type で返るため優先順位で1つだけ取得
+  function findLeads(actions: Array<{ action_type: string; value: string }> | undefined): number {
+    if (!actions) return 0
+    const grouped = actions.find((r) => r.action_type === 'onsite_conversion.lead_grouped')
+    if (grouped) return parseInt(grouped.value, 10)
+    const leadgenGrouped = actions.find((r) => r.action_type === 'leadgen_grouped')
+    if (leadgenGrouped) return parseInt(leadgenGrouped.value, 10)
+    const lead = actions.find((r) => r.action_type === 'lead')
+    if (lead) return parseInt(lead.value, 10)
+    return 0
+  }
+
   for (const insight of insights) {
     const campaignDbId = extToDbId.get(insight.campaign_id)
     const ins = insight as MetaInsight & { ad_set_id?: string }
     const adsetId = ins.adset_id ?? ins.ad_set_id
     const adsetDbId = adsetId ? adsetExtToDb.get(String(adsetId)) : undefined
     if (!campaignDbId || !adsetDbId) continue
+    const leadsCount = findLeads(insight.actions)
     spendRows.push({
       tenant_id: tenantId,
       campaign_id: campaignDbId,
@@ -110,6 +123,7 @@ export async function syncRangeForTenant(
       clicks: parseInt(insight.clicks ?? '0', 10),
       reach: parseInt(insight.reach ?? '0', 10),
       frequency: parseFloat(insight.frequency ?? '0'),
+      leads_count: leadsCount,
     })
   }
 

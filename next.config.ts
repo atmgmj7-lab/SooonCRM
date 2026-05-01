@@ -5,6 +5,7 @@ import { join } from "node:path";
 const MIDDLEWARE_NFT_REL = join(".next", "server", "middleware.js.nft.json");
 
 const nextConfig: NextConfig = {
+  turbopack: {},
   async headers() {
     return [
       {

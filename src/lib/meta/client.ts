@@ -28,6 +28,8 @@ export interface MetaInsight {
   clicks: string
   reach: string
   frequency: string
+  actions?: Array<{ action_type: string; value: string }>
+  results?: Array<{ indicator: string }>
 }
 
 export interface MetaAdSet {
@@ -99,7 +101,7 @@ export async function getDailyInsights(
   const out: MetaInsight[] = []
   let path: string | null = `act_${getAccountId()}/insights`
   const baseParams: Record<string, string> = {
-    fields: 'campaign_id,adset_id,ad_id,spend,impressions,clicks,reach,frequency',
+    fields: 'campaign_id,adset_id,ad_id,spend,impressions,clicks,reach,frequency,actions',
     level,
     time_range: JSON.stringify({ since, until }),
     time_increment: '1',
