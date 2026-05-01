@@ -1,9 +1,7 @@
-import { SignIn } from '@clerk/nextjs'
-
 export default function SignInPage() {
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-gray-50)' }}>
-      <SignIn />
+      <p>認証は現在無効化されています</p>
     </div>
   )
 }

@@ -11,7 +11,6 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.71",
     "@ai-sdk/google": "^3.0.64",
-    "@clerk/nextjs": "^7.2.7",
     "@mastra/core": "^1.28.0",
     "@mastra/libsql": "^1.9.0",
     "@supabase/ssr": "^0.10.2",
