@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/prebuild-nft.js && next build --webpack && node scripts/fix-nft.js",
+    "build": "next build --webpack && node scripts/fix-nft.js",
     "start": "next start",
     "lint": "eslint"
   },
