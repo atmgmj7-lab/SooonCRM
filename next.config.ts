@@ -1,11 +1,6 @@
 import type { NextConfig } from "next";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-
-const MIDDLEWARE_NFT_REL = join(".next", "server", "middleware.js.nft.json");
 
 const nextConfig: NextConfig = {
-  turbopack: {},
   async headers() {
     return [
       {
@@ -27,33 +22,6 @@ const nextConfig: NextConfig = {
         ],
       },
     ]
-  },
-  webpack: (config: any, { isServer }: { isServer: boolean }) => {
-    if (!isServer) {
-      return config;
-    }
-
-    config.plugins ??= [];
-    config.plugins.push({
-      apply(compiler: {
-        hooks: { done: { tap: (name: string, fn: () => void) => void } };
-      }) {
-        compiler.hooks.done.tap("MiddlewareNftJsonPlaceholder", () => {
-          const filePath = join(process.cwd(), MIDDLEWARE_NFT_REL);
-          if (existsSync(filePath)) {
-            return;
-          }
-          mkdirSync(join(process.cwd(), ".next", "server"), { recursive: true });
-          writeFileSync(
-            filePath,
-            JSON.stringify({ version: 1, files: [] }),
-            "utf8"
-          );
-        });
-      },
-    });
-
-    return config;
   },
 };
 
