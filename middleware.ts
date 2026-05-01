@@ -1,10 +1,16 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
-// dev: Clerk認証をスキップ（本番復元は git checkout middleware.ts）
-export default function middleware(_req: NextRequest) {
-  return NextResponse.next()
-}
+const isPublic = createRouteMatcher([
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/api/cron/(.*)',
+  '/api/webhooks/(.*)',
+])
+
+export default clerkMiddleware(async (auth, req) => {
+  if (isPublic(req)) return
+  await auth.protect()
+})
 
 export const config = {
   matcher: [
