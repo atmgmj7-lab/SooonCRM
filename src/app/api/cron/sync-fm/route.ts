@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { syncListRecords, syncCalls } from '@/lib/filemaker/sync'
 
+export const dynamic = 'force-dynamic'
 export const maxDuration = 300 // 5分（Vercel Pro）
 
 export async function POST(req: NextRequest) {
