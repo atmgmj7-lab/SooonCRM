@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GrowthHub – AI CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:#F5F7FA;color:#111827;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:3px}
+.mono{font-family:'DM Mono',monospace}
+.tabnum{font-variant-numeric:tabular-nums;font-family:'DM Mono',monospace}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.fade-in{animation:fadeIn .18s ease both}
+.skeleton{background:linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%);background-size:400px 100%;animation:shimmer 1.4s ease infinite;border-radius:4px}
+
+/* SIDEBAR */
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 12px;border-radius:6px;font-size:12.5px;font-weight:400;color:#94A3B8;cursor:pointer;transition:all .12s;user-select:none}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#CBD5E1}
+.nav-item.active{background:rgba(13,148,136,.2);color:#2DD4BF;font-weight:500}
+.nav-item.sub{padding-left:28px;font-size:12px}
+.nav-divider{height:1px;background:#1E293B;margin:6px 0}
+.badge{display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-family:'DM Mono',monospace;font-weight:500;min-width:17px;height:17px;padding:0 4px;border-radius:8px;background:#0D9488;color:#fff}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;transition:all .12s;border:1px solid transparent;user-select:none;white-space:nowrap}
+.btn-ghost{background:#fff;border-color:#E2E8F0;color:#374151}
+.btn-ghost:hover{background:#F9FAFB;border-color:#CBD5E1}
+.btn-primary{background:#0D9488;color:#fff;border-color:#0D9488}
+.btn-primary:hover{background:#0F766E}
+.btn-sel{background:#EFF6FF;border-color:#BFDBFE;color:#1D4ED8}
+
+/* TABS */
+.tab-bar{display:flex;gap:0;border-bottom:1px solid #E5E7EB;background:#fff;padding:0 24px;flex-shrink:0}
+.tab{padding:10px 16px;font-size:12.5px;font-weight:500;color:#9CA3AF;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s;white-space:nowrap}
+.tab:hover{color:#374151}
+.tab.on{color:#0D9488;border-bottom-color:#0D9488}
+
+/* CARDS */
+.card{background:#fff;border:1px solid #E5E7EB;border-radius:10px}
+.card-header{padding:14px 20px;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:13px;font-weight:600;color:#111827}
+.card-sub{font-size:11.5px;color:#9CA3AF;margin-top:2px}
+
+/* KPI */
+.kpi{flex:1;padding:16px 20px;border-right:1px solid #E5E7EB}
+.kpi:last-child{border-right:none}
+.kpi-label{font-size:11px;color:#9CA3AF;font-weight:500;margin-bottom:7px}
+.kpi-val{font-size:20px;font-weight:700;letter-spacing:-.5px;margin-bottom:5px;font-variant-numeric:tabular-nums;font-family:'DM Mono',monospace}
+.kpi-chg{font-size:10.5px;font-family:'DM Mono',monospace;font-weight:500}
+
+/* MAIN TABLE */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:10.5px;font-weight:600;color:#6B7280;padding:8px 12px;border-bottom:1px solid #E5E7EB;text-align:right;white-space:nowrap;background:#F9FAFB}
+.tbl th.left{text-align:left}
+.tbl td{font-size:12px;padding:9px 12px;border-bottom:1px solid #F1F5F9;text-align:right;white-space:nowrap}
+.tbl td.left{text-align:left}
+.tbl tr:hover td{background:#F9FAFB;cursor:pointer}
+.tbl .sum td{font-weight:700;background:#F0FDF4;border-top:2px solid #D1FAE5}
+
+/* AD DAILY TABLE (dense) */
+.dtbl{width:100%;border-collapse:collapse;font-size:11px}
+.dtbl th{background:#FEF3C7;color:#92400E;font-size:10px;font-weight:600;padding:5px 8px;border:1px solid #FDE68A;white-space:nowrap;text-align:right;position:sticky;top:0;z-index:2}
+.dtbl th.left{text-align:left}
+.dtbl td{padding:4px 8px;border:1px solid #E5E7EB;text-align:right;font-family:'DM Mono',monospace;font-size:10.5px}
+.dtbl td.left{text-align:left;font-family:'DM Sans',sans-serif}
+.dtbl tr:nth-child(even) td{background:#FAFAFA}
+.dtbl tr:hover td{background:#FEF9C3 !important}
+.dtbl .total td{background:#FEF3C7;font-weight:700;border-top:2px solid #F59E0B}
+
+/* LIST SUMMARY TABLE */
+.ltbl{width:100%;border-collapse:collapse;font-size:11px}
+.ltbl th{background:#1E293B;color:#94A3B8;font-size:10px;font-weight:500;padding:6px 10px;border:1px solid #2D3748;white-space:nowrap;text-align:right;position:sticky;top:0;z-index:2}
+.ltbl th.left{text-align:left;position:sticky;left:0;z-index:3;background:#0F172A}
+.ltbl td{padding:5px 10px;border:1px solid #E5E7EB;text-align:right;font-family:'DM Mono',monospace;font-size:10.5px}
+.ltbl td.left{text-align:left;font-family:'DM Sans',sans-serif;position:sticky;left:0;background:#fff;z-index:1;font-size:11px;font-weight:500}
+.ltbl tr:nth-child(even) td{background:#F8FAFC}
+.ltbl tr:nth-child(even) td.left{background:#F8FAFC}
+.ltbl .sect td{background:#E0F2FE;font-weight:700;color:#0369A1;border-top:2px solid #BAE6FD}
+.ltbl .sect td.left{background:#E0F2FE}
+.ltbl .rate td{color:#0D9488;font-weight:500}
+.ltbl .rate td.left{color:#0D9488}
+
+/* BADGE */
+.tag{display:inline-flex;align-items:center;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:500}
+.tag-green{background:#DCFCE7;color:#15803D}
+.tag-red{background:#FEE2E2;color:#DC2626}
+.tag-yellow{background:#FEF3C7;color:#92400E}
+.tag-blue{background:#DBEAFE;color:#1D4ED8}
+.tag-grey{background:#F3F4F6;color:#6B7280}
+.tag-teal{background:#CCFBF1;color:#0D9488}
+
+/* FileMaker */
+.fm-field{display:flex;flex-direction:column;gap:3px}
+.fm-label{font-size:10px;color:#6B7280;font-weight:500}
+.fm-value{font-size:11.5px;color:#111827;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:4px;padding:5px 9px;min-height:26px;font-family:'DM Mono',monospace}
+.fm-sec{background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:14px;margin-bottom:10px}
+
+/* AI */
+.ai-msg{padding:11px 15px;border-radius:10px;font-size:13px;line-height:1.7;max-width:540px;white-space:pre-wrap}
+.ai-msg.a{background:#F0FDF4;border:1px solid #BBF7D0;color:#111827;align-self:flex-start}
+.ai-msg.u{background:#0D9488;color:#fff;align-self:flex-end}
+.ai-input{width:100%;border:1px solid #E5E7EB;border-radius:8px;padding:10px 14px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;resize:none;background:#fff}
+.ai-input:focus{border-color:#0D9488;box-shadow:0 0 0 3px rgba(13,148,136,.08)}
+
+/* PIPELINE */
+.pipe-col{flex:1;min-width:160px}
+.pipe-card{background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-bottom:8px;cursor:pointer;transition:all .12s}
+.pipe-card:hover{border-color:#0D9488;box-shadow:0 2px 8px rgba(13,148,136,.1)}
+
+/* FUNNEL VISUAL */
+.funnel-step{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef}=React;
+
+// ─── STATIC DATA ─────────────────────────────────────────
+const DAILY_SEP=[
+  {d:"2025/09/01",w:"火",leads:5,clicks:52,reach:1912,imp:2495,freq:"—",cpa:2732,ctr:2.1,cpc:263,cpm:5476,spend:13662},
+  {d:"2025/09/02",w:"水",leads:8,clicks:49,reach:1900,imp:2340,freq:"—",cpa:1770,ctr:2.1,cpc:289,cpm:6051,spend:14159},
+  {d:"2025/09/03",w:"木",leads:7,clicks:58,reach:2202,imp:2821,freq:"—",cpa:1979,ctr:2.1,cpc:239,cpm:4910,spend:13851},
+  {d:"2025/09/04",w:"金",leads:5,clicks:48,reach:2028,imp:2509,freq:"—",cpa:2724,ctr:1.9,cpc:284,cpm:5428,spend:13620},
+  {d:"2025/09/05",w:"土",leads:4,clicks:46,reach:1796,imp:2223,freq:"—",cpa:3446,ctr:2.1,cpc:300,cpm:6200,spend:13783},
+  {d:"2025/09/06",w:"日",leads:7,clicks:44,reach:1933,imp:2361,freq:"—",cpa:2026,ctr:1.9,cpc:322,cpm:6007,spend:14183},
+  {d:"2025/09/07",w:"月",leads:6,clicks:67,reach:2485,imp:3148,freq:"—",cpa:2839,ctr:2.1,cpc:254,cpm:5411,spend:17034},
+  {d:"2025/09/08",w:"火",leads:6,clicks:47,reach:1562,imp:1947,freq:"—",cpa:2414,ctr:2.4,cpc:308,cpm:7439,spend:14483},
+  {d:"2025/09/09",w:"水",leads:6,clicks:44,reach:1558,imp:1978,freq:"—",cpa:2431,ctr:2.2,cpc:331,cpm:7374,spend:14585},
+  {d:"2025/09/10",w:"木",leads:3,clicks:50,reach:1820,imp:2286,freq:"—",cpa:13056,ctr:2.2,cpc:783,cpm:17134,spend:39169},
+  {d:"2025/09/11",w:"金",leads:6,clicks:47,reach:1539,imp:2041,freq:"—",cpa:2102,ctr:2.3,cpc:268,cpm:6179,spend:12612},
+  {d:"2025/09/12",w:"土",leads:10,clicks:51,reach:1639,imp:2000,freq:"—",cpa:1395,ctr:2.6,cpc:274,cpm:6976,spend:13952},
+  {d:"2025/09/13",w:"日",leads:5,clicks:38,reach:1716,imp:2006,freq:"—",cpa:2782,ctr:1.9,cpc:366,cpm:6934,spend:13910},
+  {d:"2025/09/14",w:"月",leads:9,clicks:52,reach:2129,imp:2563,freq:"—",cpa:1770,ctr:2.0,cpc:306,cpm:6214,spend:15926},
+  {d:"2025/09/15",w:"火",leads:8,clicks:61,reach:2286,imp:2815,freq:"—",cpa:1925,ctr:2.2,cpc:252,cpm:5471,spend:15401},
+  {d:"2025/09/16",w:"水",leads:6,clicks:43,reach:2251,imp:2749,freq:"—",cpa:2309,ctr:1.6,cpc:322,cpm:5040,spend:13856},
+  {d:"2025/09/17",w:"木",leads:4,clicks:49,reach:2260,imp:2771,freq:"—",cpa:3586,ctr:1.8,cpc:293,cpm:5176,spend:14342},
+  {d:"2025/09/18",w:"金",leads:7,clicks:55,reach:1982,imp:2447,freq:"—",cpa:2043,ctr:2.2,cpc:267,cpm:5892,spend:14302},
+  {d:"2025/09/19",w:"土",leads:8,clicks:61,reach:2340,imp:2890,freq:"—",cpa:1880,ctr:2.1,cpc:248,cpm:5533,spend:15040},
+  {d:"2025/09/20",w:"日",leads:6,clicks:48,reach:1910,imp:2380,freq:"—",cpa:2510,ctr:2.0,cpc:315,cpm:6012,spend:15062},
+  {d:"2025/09/21",w:"月",leads:9,clicks:70,reach:2600,imp:3200,freq:"—",cpa:1660,ctr:2.2,cpc:236,cpm:5180,spend:14944},
+  {d:"2025/09/22",w:"火",leads:7,clicks:53,reach:2010,imp:2490,freq:"—",cpa:2138,ctr:2.1,cpc:287,cpm:5714,spend:14966},
+  {d:"2025/09/23",w:"水",leads:5,clicks:44,reach:1760,imp:2190,freq:"—",cpa:2994,ctr:2.0,cpc:340,cpm:6566,spend:14969},
+  {d:"2025/09/24",w:"木",leads:8,clicks:59,reach:2240,imp:2760,freq:"—",cpa:1876,ctr:2.1,cpc:254,cpm:5469,spend:15010},
+  {d:"2025/09/25",w:"金",leads:6,clicks:46,reach:1850,imp:2290,freq:"—",cpa:2502,ctr:2.0,cpc:326,cpm:6157,spend:15010},
+  {d:"2025/09/26",w:"土",leads:7,clicks:51,reach:1980,imp:2440,freq:"—",cpa:2145,ctr:2.1,cpc:295,cpm:6148,spend:15010},
+  {d:"2025/09/27",w:"日",leads:9,clicks:68,reach:2520,imp:3120,freq:"—",cpa:1668,ctr:2.2,cpc:221,cpm:4811,spend:15010},
+  {d:"2025/09/28",w:"月",leads:8,clicks:60,reach:2300,imp:2840,freq:"—",cpa:1876,ctr:2.1,cpc:250,cpm:5285,spend:15010},
+  {d:"2025/09/29",w:"火",leads:6,clicks:47,reach:1890,imp:2330,freq:"—",cpa:2502,ctr:2.0,cpc:319,cpm:6438,spend:15010},
+  {d:"2025/09/30",w:"水",leads:7,clicks:53,reach:2110,imp:2600,freq:"—",cpa:2144,ctr:2.0,cpc:283,cpm:5773,spend:15010},
+];
+
+const MONTHS=["2025年6月","7月","8月","9月","10月","11月","12月","2026年1月","2月","3月","4月"];
+const MS=["6月","7月","8月","9月","10月","11月","12月","1月","2月","3月","4月"];
+
+const LIST_SUMMARY={
+  リスト数:     [66,213,165,294,182,152,138,331,88,82,98],
+  アポOK:       [20,45,28,66,47,41,38,57,7,11,16],
+  "調整中":     [0,0,0,1,1,0,0,4,1,4,9],
+  "採用OK":     [12,20,20,44,31,25,25,21,3,5,2],
+  "採用NG":     [8,25,8,20,16,16,17,17,3,2,5],
+  受注:         [2,5,5,5,5,7,6,5,2,2,0],
+  対象外:       [10,47,18,13,9,8,11,23,4,1,1],
+  完了:         [59,187,134,210,129,110,94,192,40,24,16],
+  未コール:     [0,0,0,0,0,0,0,0,15,20,6],
+  留守:         [7,24,22,53,45,37,40,102,23,28,35],
+  見込みA:      [0,0,0,3,1,0,0,9,2,2,0],
+  見込みB:      [0,2,1,10,4,3,1,6,5,1,4],
+  見込みC:      [0,2,7,17,3,2,3,22,2,2,1],
+  未完了:       [7,26,30,83,53,42,44,139,45,53,46],
+  リード:       [66,213,165,294,182,152,138,331,88,82,98],
+  クリック:     [400,2203,1859,4315,2425,1836,1486,3644,994,900,973],
+  リーチ:       [9008,94311,75082,211440,108040,98279,77457,170737,29330,31397,42698],
+  インプ:       [11206,114712,88112,237356,124480,115343,93700,222190,38755,40598,57619],
+  CPA:          [1091,2473,4587,5677,5739,5221,4432,4949,4108,7701,4466],
+  CTR:          [3.57,1.92,2.11,1.82,1.95,1.59,1.59,1.64,2.56,2.22,1.69],
+  CPC:          [180,239,407,387,431,432,412,450,364,702,450],
+  CPM:          [6425,4592,8589,7031,8390,6880,6528,7353,9328,15554,7596],
+  広告費:       [71998,526775,756816,1668909,1044426,793569,611662,1638199,361501,631473,437677],
+  ROAS:         [2707,259.5,382.9,135.6,280.4,469.9,312.9,66.5,1089.6,344.9,0],
+  総受注額:     [1949000,1367000,2898000,2262800,2928200,3729000,1914000,1089000,3939000,2178000,0],
+};
+
+const CAMPAIGNS_AD=[
+  {id:"meta1",name:"金額表示ポップイラスト20250622~",platform:"Meta",month:"9月",spend:1668909,leads:294,clicks:4315,cpa:5677,ctr:1.82,cpc:387,cpm:7031,orders:5,revenue:2262800,roas:135.6},
+  {id:"meta2",name:"Meta リターゲティング",platform:"Meta",month:"9月",spend:280000,leads:96,clicks:3240,cpa:2917,ctr:2.1,cpc:86,cpm:1823,orders:7,revenue:980000,roas:350.0},
+  {id:"goo1",name:"Google Search 高意図KW",platform:"Google",month:"9月",spend:510000,leads:64,clicks:1780,cpa:7969,ctr:3.6,cpc:286,cpm:0,orders:18,revenue:3160000,roas:619.6},
+  {id:"goo2",name:"Google Display Apr",platform:"Google",month:"9月",spend:38000,leads:22,clicks:5120,cpa:1727,ctr:0.4,cpc:7,cpm:310,orders:1,revenue:120000,roas:315.8},
+  {id:"tik1",name:"TikTok Leads Apr",platform:"TikTok",month:"9月",spend:0,leads:9,clicks:620,cpa:0,ctr:1.5,cpc:0,cpm:0,orders:0,revenue:0,roas:0},
+];
+
+const LEAD_TRACKING=[
+  {ad:"Meta Lead Gen",month:"2025年9月",leads:294,apo:66,deal:44,order:5,ng:20,inProgress:139,revenue:2262800,roas:135.6,
+   m1:{apo:66,deal:44,order:5,ng:20},m2:{apo:68,deal:46,order:7,ng:22},m3:{apo:70,deal:47,order:8,ng:24}},
+  {ad:"Google Search",month:"2025年9月",leads:64,apo:28,deal:22,order:18,ng:6,inProgress:10,revenue:3160000,roas:619.6,
+   m1:{apo:28,deal:22,order:18,ng:6},m2:{apo:29,deal:23,order:20,ng:6},m3:{apo:30,deal:24,order:22,ng:5}},
+  {ad:"Meta Retargeting",month:"2025年9月",leads:96,apo:20,deal:16,order:7,ng:13,inProgress:59,revenue:980000,roas:350.0,
+   m1:{apo:20,deal:16,order:7,ng:13},m2:{apo:22,deal:17,order:8,ng:13},m3:{apo:23,deal:18,order:9,ng:13}},
+  {ad:"Meta Lead Gen",month:"2025年10月",leads:182,apo:47,deal:31,order:5,ng:16,inProgress:99,revenue:2928200,roas:280.4,
+   m1:{apo:47,deal:31,order:5,ng:16},m2:{apo:49,deal:33,order:7,ng:16},m3:{apo:50,deal:34,order:8,ng:16}},
+  {ad:"Google Search",month:"2025年10月",leads:55,apo:25,deal:18,order:14,ng:7,inProgress:18,revenue:2100000,roas:388.9,
+   m1:{apo:25,deal:18,order:14,ng:7},m2:{apo:26,deal:19,order:15,ng:7},m3:{apo:27,deal:20,order:16,ng:7}},
+];
+
+const FM_CALLS=[
+  {csId:"CS0000246",taId:"TA0000150",result:"?",startDate:"2025/04/15",st:"11:31:06",et:"11:32:52",mins:1.76,secs:106,who:"野原 雄大",repHit:"",level:"受付拒否"},
+  {csId:"CS0000247",taId:"TA0000151",result:"NG",startDate:"2025/04/15",st:"11:34:19",et:"11:35:02",mins:0.72,secs:43,who:"野原 雄大",repHit:"",level:""},
+  {csId:"CS0000248",taId:"TA0000152",result:"NG",startDate:"2025/04/15",st:"11:39:24",et:"11:41:16",mins:2.16,secs:130,who:"野原 雄大",repHit:"",level:""},
+  {csId:"CS0000260",taId:"TA0000162",result:"NG",startDate:"2025/04/15",st:"11:56:11",et:"13:27:27",mins:1.27,secs:76,who:"野原 雄大",repHit:"",level:""},
+  {csId:"CS0000261",taId:"TA0000163",result:"決め",startDate:"2025/04/15",st:"13:28:55",et:"13:29:37",mins:7.0,secs:42,who:"野原 雄大",repHit:"",level:"3R"},
+  {csId:"CS0000263",taId:"TA0000165",result:"決め",startDate:"2025/04/15",st:"13:31:17",et:"13:32:04",mins:0.78,secs:47,who:"野原 雄大",repHit:"ヒット",level:""},
+  {csId:"CS0000266",taId:"TA0000167",result:"訴アナ",startDate:"2025/04/15",st:"13:35:30",et:"13:35:44",mins:0.23,secs:14,who:"野原 雄大",repHit:"",level:"現使われていない"},
+  {csId:"CS0000268",taId:"TA0000168",result:"対象外",startDate:"2025/04/15",st:"13:36:36",et:"13:36:55",mins:0.32,secs:19,who:"野原 雄大",repHit:"",level:""},
+  {csId:"CS0000282",taId:"TA0000178",result:"洗込AC",startDate:"2025/04/15",st:"13:45:26",et:"13:46:04",mins:0.63,secs:38,who:"野原 雄大",repHit:"ヒット",level:""},
+  {csId:"CS0000284",taId:"TA0000180",result:"対象外",startDate:"2025/04/15",st:"13:47:25",et:"13:50:06",mins:2.68,secs:161,who:"野原 雄大",repHit:"",level:""},
+  {csId:"CS0000285",taId:"TA0000181",result:"NG",startDate:"2025/04/15",st:"13:50:47",et:"13:51:27",mins:0.67,secs:40,who:"野原 雄大",repHit:"",level:""},
+  {csId:"CS0000289",taId:"TA0000185",result:"留守",startDate:"2025/04/15",st:"13:54:48",et:"13:54:56",mins:0.13,secs:8,who:"野原 雄大",repHit:"",level:"留守電"},
+  {csId:"CS0000294",taId:"TA0000186",result:"NG",startDate:"2025/04/15",st:"13:56:17",et:"13:57:11",mins:0.9,secs:54,who:"野原 雄大",repHit:"",level:"3R"},
+  {csId:"CS0000295",taId:"TA0000187",result:"留守",startDate:"2025/04/15",st:"13:57:52",et:"13:58:15",mins:0.38,secs:23,who:"野原 雄大",repHit:"",level:"4R"},
+];
+
+const LISTS=[
+  {id:"LS001",name:"金額表示ポップイラスト20250622~",campaign:"Meta Lead Gen",count:294,apo:66,complete:210,remaining:84},
+  {id:"LS002",name:"Google検索高意図KW2025",campaign:"Google Search",count:64,apo:28,complete:58,remaining:6},
+  {id:"LS003",name:"リターゲ春セール2025",campaign:"Meta Retargeting",count:96,apo:20,complete:72,remaining:24},
+  {id:"LS004",name:"TikTokリード獲得2025",campaign:"TikTok Leads",count:9,apo:3,complete:5,remaining:4},
+];
+
+const LEAD_ROWS=[
+  {id:"TA0000001",listId:"LS001",date:"2025-09-22 19:42",ad:"金額表示ポップイラスト20250622~",company:"村上工業",industry:"BtoG・住宅",rep:"村上浩太",area:"大阪",phone:"08012890053",result:"アポOK",calls:2},
+  {id:"TA0000002",listId:"LS001",date:"2025-09-22 20:23",ad:"金額表示ポップイラスト20250622~",company:"あかり工房",industry:"個人",rep:"",area:"",phone:"",result:"",calls:0},
+  {id:"TA0000003",listId:"LS001",date:"2025-09-22 21:37",ad:"金額表示ポップイラスト20250622~",company:"春 遼",industry:"個人事業主",rep:"春 遼",area:"",phone:"08063630316",result:"アポOK",calls:1},
+  {id:"TA0000004",listId:"LS001",date:"2025-09-23 07:53",ad:"金額表示ポップイラスト20250622~",company:"有吉塗装商店",industry:"塗装業",rep:"専任",area:"大阪",phone:"06012345678",result:"NG",calls:2},
+  {id:"TA0000005",listId:"LS001",date:"2025-09-23 10:35",ad:"金額表示ポップイラスト20250622~",company:"Aトラスト",industry:"不動産",rep:"代表",area:"Gifu",phone:"",result:"アポOK",calls:3},
+  {id:"TA0000006",listId:"LS001",date:"2025-09-23 10:51",ad:"金額表示ポップイラスト20250622~",company:"小島企画",industry:"コンサル",rep:"代表",area:"",phone:"08028690177",result:"",calls:0},
+  {id:"TA0000007",listId:"LS002",date:"2025-09-23 13:35",ad:"Google検索高意図KW2025",company:"まつやまさとし",industry:"個人",rep:"まつやまさとし",area:"",phone:"822909050",result:"アポOK",calls:1},
+  {id:"TA0000008",listId:"LS002",date:"2025-09-23 13:55",ad:"Google検索高意図KW2025",company:"川島製作所",industry:"製造業",rep:"代表",area:"Kanagawa",phone:"05031664888",result:"NG",calls:2},
+  {id:"TA0000009",listId:"LS002",date:"2025-09-23 14:01",ad:"Google検索高意図KW2025",company:"acc環境事業合同会社",industry:"環境",rep:"",area:"Hiroshima",phone:"08262290478",result:"先日",calls:1},
+  {id:"TA0000010",listId:"LS002",date:"2025-09-23 15:20",ad:"Google検索高意図KW2025",company:"白石建設有限会社",industry:"建設",rep:"白石",area:"",phone:"03506514422",result:"アポOK",calls:1},
+  {id:"TA0000011",listId:"LS001",date:"2025-09-23 12:40",ad:"金額表示ポップイラスト20250622~",company:"TIA",industry:"",rep:"",area:"新潟",phone:"02563440001",result:"アポOK",calls:1},
+  {id:"TA0000012",listId:"LS001",date:"2025-09-24 03:46",ad:"金額表示ポップイラスト20250622~",company:"フタバリフォーム",industry:"建設",rep:"",area:"",phone:"08005521247",result:"NG",calls:1},
+];
+
+const DEALS=[
+  {id:"DL001",company:"村上工業",lead:"TA0000001",stage:"提案済み",amount:420000,prob:70,assignee:"山田 花子",updated:"2026/04/18"},
+  {id:"DL002",company:"Aトラスト",lead:"TA0000005",stage:"商談中",amount:280000,prob:50,assignee:"鈴木 一郎",updated:"2026/04/20"},
+  {id:"DL003",company:"TIA",lead:"TA0000011",stage:"受注",amount:350000,prob:100,assignee:"田村 次郎",updated:"2026/04/15"},
+  {id:"DL004",company:"まつやまさとし",lead:"TA0000007",stage:"受注",amount:165000,prob:100,assignee:"山田 花子",updated:"2026/04/10"},
+  {id:"DL005",company:"白石建設有限会社",lead:"TA0000010",stage:"ニーズ確認",amount:220000,prob:30,assignee:"鈴木 一郎",updated:"2026/04/22"},
+  {id:"DL006",company:"有吉塗装商店",lead:"TA0000004",stage:"失注",amount:0,prob:0,assignee:"田村 次郎",updated:"2026/04/12"},
+  {id:"DL007",company:"acc環境事業合同会社",lead:"TA0000009",stage:"提案済み",amount:398000,prob:60,assignee:"山田 花子",updated:"2026/04/21"},
+  {id:"DL008",company:"川島製作所",lead:"TA0000008",stage:"受注",amount:527000,prob:100,assignee:"鈴木 一郎",updated:"2026/04/08"},
+];
+
+const MRR_MONTHS=["6月","7月","8月","9月","10月","11月","12月","1月","2月","3月","4月","5月"];
+const MRR_CUSTOMERS=[
+  {name:"村上工業",plan:"LINEバ",fee:165000,dealId:"DL003",cols:[null,null,null,null,null,null,null,165000,165000,165000,165000,null]},
+  {name:"Aトラスト",plan:"セミオーダー",fee:278000,dealId:"DL004",cols:[null,null,null,null,278000,278000,278000,278000,278000,278000,278000,null]},
+  {name:"TIA",plan:"プレミアム",fee:420000,dealId:"DL001",cols:[null,null,null,null,null,420000,420000,420000,420000,420000,420000,null]},
+  {name:"まつやまさとし",plan:"シンプル",fee:40000,dealId:"DL002",cols:[null,null,null,null,null,null,40000,40000,40000,40000,40000,null]},
+  {name:"白石建設",plan:"LINEバ",fee:308000,dealId:"DL008",cols:[null,null,null,null,null,null,null,308000,308000,308000,308000,null]},
+  {name:"川島製作所",plan:"プレミアム",fee:527000,dealId:"DL008",cols:[null,null,null,null,null,null,null,null,527000,527000,527000,null]},
+];
+
+// ─── HELPERS ─────────────────────────────────────────────
+const yen=v=>"¥"+v.toLocaleString("ja-JP");
+const num=v=>v.toLocaleString("ja-JP");
+const pct=v=>v.toFixed(1)+"%";
+
+function PTag({p}){
+  const m={Meta:{bg:"#EEF2FF",c:"#4F46E5"},Google:{bg:"#FFF7ED",c:"#EA580C"},TikTok:{bg:"#F0FDF4",c:"#16A34A"}};
+  const s=m[p]||{bg:"#F3F4F6",c:"#6B7280"};
+  return<span className="tag" style={{background:s.bg,color:s.c,borderRadius:5}}>{p}</span>;
+}
+function RBadge({r}){
+  if(!r)return<span style={{color:"#D1D5DB",fontSize:10}}>—</span>;
+  const map={"アポOK":"tag-green","NG":"tag-red","先日":"tag-yellow","決め":"tag-blue","洗込AC":"tag-teal","受注":"tag-green","失注":"tag-red","提案済み":"tag-blue","商談中":"tag-yellow","ニーズ確認":"tag-grey"};
+  return<span className={`tag ${map[r]||"tag-grey"}`}>{r}</span>;
+}
+function Spark({pos}){
+  const c=pos?"#10B981":"#EF4444";
+  return<svg width="44" height="16" viewBox="0 0 44 16" fill="none" style={{display:"block"}}>{pos?<polyline points="0,12 10,9 20,7 30,5 44,1" stroke={c} strokeWidth="1.5" fill="none" strokeLinecap="round"/>:<polyline points="0,2 10,5 20,8 30,10 44,14" stroke={c} strokeWidth="1.5" fill="none" strokeLinecap="round"/>}</svg>;
+}
+
+// ─── SIMPLE CHARTS ───────────────────────────────────────
+function BarLineChart({data,xKey,barKey,lineKey,barLabel,lineLabel}){
+  const W=560,H=150,P={t:12,r:12,b:28,l:52};
+  const cw=W-P.l-P.r,ch=H-P.t-P.b;
+  const maxB=Math.max(...data.map(d=>d[barKey]));
+  const maxL=Math.max(...data.map(d=>d[lineKey]));
+  const minL=Math.min(...data.map(d=>d[lineKey]));
+  const bw=cw/data.length*0.6;
+  const lpts=data.map((d,i)=>`${P.l+i*(cw/(data.length-1))},${P.t+ch-((d[lineKey]-minL)/(maxL-minL||1))*ch}`).join(" ");
+  return<svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
+    {[0,.5,1].map(f=><line key={f} x1={P.l} y1={P.t+ch*(1-f)} x2={W-P.r} y2={P.t+ch*(1-f)} stroke="#F1F5F9" strokeWidth="1"/>)}
+    {data.map((d,i)=>{
+      const x=P.l+i*(cw/data.length)+cw/data.length*0.2;
+      const h=(d[barKey]/maxB)*ch;
+      return<g key={i}>
+        <rect x={x} y={P.t+ch-h} width={bw} height={h} fill="#BAE6FD" rx="2"/>
+        <text x={x+bw/2} y={H-P.b+12} fontSize="8" fill="#9CA3AF" textAnchor="middle">{d[xKey]}</text>
+      </g>;
+    })}
+    <polyline points={lpts} stroke="#0D9488" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+    {data.map((d,i)=><circle key={i} cx={P.l+i*(cw/(data.length-1))} cy={P.t+ch-((d[lineKey]-minL)/(maxL-minL||1))*ch} r="2.5" fill="#0D9488" stroke="#fff" strokeWidth="1.5"/>)}
+    <rect x={P.l} y={8} width={8} height={5} fill="#BAE6FD" rx="1"/><text x={P.l+11} y={13} fontSize="8" fill="#6B7280">{barLabel}</text>
+    <rect x={P.l+70} y={8} width={12} height={2} fill="#0D9488"/><text x={P.l+85} y={13} fontSize="8" fill="#6B7280">{lineLabel}</text>
+  </svg>;
+}
+
+function LineChart({data,xKey,yKey,color,fmt}){
+  const W=560,H=120,P={t:12,r:12,b:24,l:48};
+  const cw=W-P.l-P.r,ch=H-P.t-P.b;
+  const max=Math.max(...data.map(d=>d[yKey]));
+  const min=Math.min(...data.map(d=>d[yKey]));
+  const sx=i=>P.l+i*(cw/(data.length-1));
+  const sy=v=>P.t+ch-((v-min)/(max-min||1))*ch;
+  const pts=data.map((d,i)=>`${sx(i)},${sy(d[yKey])}`).join(" ");
+  return<svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
+    {[0,.5,1].map(f=>{const y=P.t+ch*(1-f);const v=min+(max-min)*f;return<g key={f}><line x1={P.l} y1={y} x2={W-P.r} y2={y} stroke="#F1F5F9" strokeWidth="1"/><text x={P.l-4} y={y+4} fontSize="8" fill="#9CA3AF" textAnchor="end">{fmt?fmt(v):v.toFixed(0)}</text></g>;})}
+    <polyline points={pts} stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+    {data.map((d,i)=><circle key={i} cx={sx(i)} cy={sy(d[yKey])} r="2.5" fill={color} stroke="#fff" strokeWidth="1.5"/>)}
+    {data.map((d,i)=><text key={i} x={sx(i)} y={H-P.b+12} fontSize="8" fill="#9CA3AF" textAnchor="middle">{d[xKey]}</text>)}
+  </svg>;
+}
+
+// ─── AD MANAGER ──────────────────────────────────────────
+function AdDailyTable({data,title}){
+  const tot={leads:0,clicks:0,reach:0,imp:0,spend:0};
+  data.forEach(r=>{tot.leads+=r.leads;tot.clicks+=r.clicks;tot.reach+=r.reach;tot.imp+=r.imp;tot.spend+=r.spend;});
+  tot.cpa=tot.leads>0?Math.round(tot.spend/tot.leads):0;
+  tot.ctr=tot.imp>0?tot.clicks/tot.imp*100:0;
+  tot.cpc=tot.clicks>0?Math.round(tot.spend/tot.clicks):0;
+  tot.cpm=tot.imp>0?Math.round(tot.spend/tot.imp*1000):0;
+  return<div style={{background:"#fff",border:"1px solid #E5E7EB",borderRadius:10,overflow:"hidden",marginBottom:16}}>
+    <div style={{background:"#FEF9C3",padding:"10px 16px",borderBottom:"1px solid #FDE68A",display:"flex",alignItems:"center",gap:12}}>
+      <span style={{fontSize:13,fontWeight:600,color:"#92400E"}}>{title}</span>
+    </div>
+    <div style={{overflowX:"auto"}}>
+      <table className="dtbl">
+        <thead><tr>
+          <th className="left" style={{minWidth:90}}>日付</th>
+          <th style={{width:40}}>曜日</th>
+          <th>リード</th><th>クリック</th><th>リーチ</th><th>インプ</th>
+          <th>リークエンシ</th><th>CPA</th><th>CTR</th><th>CPC</th><th>CPM</th><th>広告費</th>
+        </tr></thead>
+        <tbody>
+          <tr className="total">
+            <td className="left" style={{fontWeight:700}}>合計</td><td></td>
+            <td style={{color:"#0D9488",fontWeight:700}}>{num(tot.leads)}</td>
+            <td>{num(tot.clicks)}</td><td>{num(tot.reach)}</td><td>{num(tot.imp)}</td>
+            <td>—</td>
+            <td style={{color:tot.cpa>5000?"#DC2626":"#15803D"}}>{yen(tot.cpa)}</td>
+            <td>{tot.ctr.toFixed(1)}%</td>
+            <td>{yen(tot.cpc)}</td><td>{yen(tot.cpm)}</td>
+            <td style={{fontWeight:700}}>{yen(tot.spend)}</td>
+          </tr>
+          {data.map((r,i)=><tr key={i}>
+            <td className="left" style={{color:"#6B7280"}}>{r.d}</td>
+            <td style={{textAlign:"center",color:["土","日"].includes(r.w)?"#DC2626":"#6B7280"}}>{r.w}</td>
+            <td style={{color:"#0D9488",fontWeight:500}}>{r.leads}</td>
+            <td>{num(r.clicks)}</td><td>{num(r.reach)}</td><td>{num(r.imp)}</td>
+            <td style={{color:"#9CA3AF"}}>{r.freq}</td>
+            <td style={{color:r.cpa>5000?"#DC2626":"inherit"}}>{yen(r.cpa)}</td>
+            <td>{r.ctr.toFixed(1)}%</td>
+            <td>{yen(r.cpc)}</td><td>{yen(r.cpm)}</td>
+            <td>{yen(r.spend)}</td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </div>;
+}
+
+function ListSummaryTable(){
+  const rows=[
+    {label:"リスト数",key:"リスト数",type:"count"},
+    {label:"アポOK",key:"アポOK",type:"count",color:"#15803D"},
+    {label:"調整中（商談前）",key:"調整中",type:"count"},
+    {label:"採用OK（着座）",key:"採用OK",type:"count",color:"#1D4ED8"},
+    {label:"採用NG",key:"採用NG",type:"count",color:"#DC2626"},
+    {label:"受注",key:"受注",type:"count",color:"#0D9488",bold:true},
+    {label:"対象外",key:"対象外",type:"count",color:"#9CA3AF"},
+    {label:"完了",key:"完了",type:"count"},
+    {label:"未コール",key:"未コール",type:"count",color:"#F59E0B"},
+    {label:"留守",key:"留守",type:"count",color:"#8B5CF6"},
+    {label:"見込みA",key:"見込みA",type:"count",color:"#3B82F6"},
+    {label:"見込みB",key:"見込みB",type:"count"},
+    {label:"見込みC",key:"見込みC",type:"count"},
+    {label:"未完了",key:"未完了",type:"count",color:"#F59E0B"},
+    {label:"対リストアポ率",type:"rate",vals:[30.3,21.1,17.0,22.4,25.8,27.0,27.6,17.2,8.0,13.4,16.3]},
+    {label:"対アポ率",type:"rate",vals:[33.9,24.1,20.9,31.0,36.3,37.0,40.0,29.8,18.2,45.5,100.0]},
+    {label:"対応着座率",type:"rate",vals:[18.2,9.4,12.1,15.0,17.0,16.4,18.1,11.1,3.4,6.1,2.0]},
+    {label:"リスト完了率",type:"rate",vals:[89.4,87.8,81.2,71.4,70.9,72.4,68.1,58.0,45.5,29.3,16.3]},
+    {label:"対リスト受注率",type:"rate",vals:[3.03,2.35,3.03,1.70,2.75,4.61,4.35,1.51,2.27,2.44,0.00]},
+    {label:"━ 広告指標",type:"section"},
+    {label:"リード数",key:"リード",type:"count"},
+    {label:"クリック数",key:"クリック",type:"count"},
+    {label:"CPA",key:"CPA",type:"yen",warn:true},
+    {label:"CTR",key:"CTR",type:"pct"},
+    {label:"CPC",key:"CPC",type:"yen"},
+    {label:"CPM",key:"CPM",type:"yen"},
+    {label:"広告費",key:"広告費",type:"yen",bold:true},
+    {label:"━ 単価・受注",type:"section"},
+    {label:"総受注額",key:"総受注額",type:"yen",bold:true,color:"#0D9488"},
+    {label:"ROAS",key:"ROAS",type:"pct",bold:true,color:"#15803D"},
+  ];
+  return<div style={{background:"#fff",border:"1px solid #E5E7EB",borderRadius:10,overflow:"hidden"}}>
+    <div style={{overflowX:"auto",maxHeight:"calc(100vh - 280px)"}}>
+      <table className="ltbl">
+        <thead><tr>
+          <th className="left" style={{minWidth:180}}>指標</th>
+          {MS.map(m=><th key={m}>{m}</th>)}
+          <th style={{background:"#0D9488",color:"#fff"}}>合計</th>
+        </tr></thead>
+        <tbody>
+          {rows.map((row,i)=>{
+            if(row.type==="section") return<tr key={i} className="sect"><td className="left" colSpan={MS.length+2} style={{fontSize:11,fontWeight:700,letterSpacing:".04em",color:"#0369A1"}}>{row.label}</td></tr>;
+            const isRate=row.type==="rate"||row.type==="pct";
+            const vals=row.vals||(LIST_SUMMARY[row.key]||MS.map(()=>0));
+            const tot=isRate?null:vals.reduce((a,b)=>a+b,0);
+            const fmtV=v=>{if(row.type==="yen")return yen(v);if(row.type==="pct"||row.type==="rate")return pct(v);return num(v);};
+            return<tr key={i} className={isRate?"rate":""}>
+              <td className="left" style={{color:row.color||"inherit",fontWeight:row.bold?600:400}}>{row.label}</td>
+              {vals.map((v,mi)=><td key={mi} style={{color:row.color||(row.warn&&v>5000?"#DC2626":"inherit"),fontWeight:row.bold?600:400}}>{fmtV(v)}</td>)}
+              <td style={{background:"#F0FDF4",fontWeight:700,color:row.color||"#374151"}}>{tot!==null?fmtV(tot):"—"}</td>
+            </tr>;
+          })}
+        </tbody>
+      </table>
+    </div>
+  </div>;
+}
+
+function LeadTrackingTable(){
+  return<div style={{background:"#fff",border:"1px solid #E5E7EB",borderRadius:10,overflow:"hidden"}}>
+    <div className="card-header"><div><div className="card-title">リード追客 — 広告別月次結果推移</div><div className="card-sub">各月の広告から流入したリードが2〜3ヶ月後にどう変化したか</div></div></div>
+    <div style={{overflowX:"auto"}}>
+      <table className="tbl">
+        <thead><tr>
+          <th className="left" style={{minWidth:160}}>広告</th>
+          <th className="left">流入月</th>
+          <th>流入リード</th>
+          <th>アポOK</th>
+          <th>商談着座</th>
+          <th>受注</th>
+          <th>NG</th>
+          <th>追客中</th>
+          <th>1ヶ月後_アポ</th>
+          <th>1ヶ月後_受注</th>
+          <th>2ヶ月後_アポ</th>
+          <th>2ヶ月後_受注</th>
+          <th>3ヶ月後_受注</th>
+          <th>受注金額</th>
+          <th>ROAS</th>
+        </tr></thead>
+        <tbody>
+          {LEAD_TRACKING.map((r,i)=><tr key={i}>
+            <td className="left" style={{fontWeight:500}}>{r.ad}</td>
+            <td className="left"><span className="tag tag-blue">{r.month}</span></td>
+            <td className="tabnum" style={{color:"#0D9488",fontWeight:600}}>{num(r.leads)}</td>
+            <td className="tabnum" style={{color:"#15803D"}}>{r.apo}</td>
+            <td className="tabnum">{r.deal}</td>
+            <td className="tabnum" style={{color:"#0D9488",fontWeight:600}}>{r.order}</td>
+            <td className="tabnum" style={{color:"#DC2626"}}>{r.ng}</td>
+            <td className="tabnum" style={{color:"#F59E0B"}}>{r.inProgress}</td>
+            <td className="tabnum" style={{color:"#6B7280"}}>{r.m1.apo}</td>
+            <td className="tabnum" style={{color:"#0D9488"}}>{r.m1.order}</td>
+            <td className="tabnum" style={{color:"#6B7280"}}>{r.m2.apo}</td>
+            <td className="tabnum" style={{color:"#0D9488"}}>{r.m2.order}</td>
+            <td className="tabnum" style={{color:"#0D9488",fontWeight:600}}>{r.m3.order}</td>
+            <td className="tabnum" style={{fontWeight:600}}>{yen(r.revenue)}</td>
+            <td className="tabnum" style={{color:r.roas>200?"#15803D":r.roas>100?"#92400E":"#DC2626",fontWeight:600}}>{r.roas.toFixed(1)}%</td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+    <div style={{padding:"10px 20px",background:"#F8FAFC",borderTop:"1px solid #E5E7EB",fontSize:11.5,color:"#9CA3AF"}}>
+      ※ 1〜3ヶ月後の数値は該当月以降のコール・商談結果の累積値。追客中は未完了リードの残数。
+    </div>
+  </div>;
+}
+
+function AdManagerView(){
+  const [tab,setTab]=useState("summary");
+  const [platform,setPlatform]=useState("all");
+  const [period,setPeriod]=useState("6m");
+  const [selAd,setSelAd]=useState(CAMPAIGNS_AD[0]);
+
+  const mData=MS.map((m,i)=>({m,spend:LIST_SUMMARY.広告費[i],leads:LIST_SUMMARY.リード[i],roas:LIST_SUMMARY.ROAS[i],cpa:LIST_SUMMARY.CPA[i]}));
+  const pData=period==="3m"?mData.slice(-3):period==="6m"?mData.slice(-6):mData;
+
+  const filteredAds=CAMPAIGNS_AD.filter(c=>platform==="all"||c.platform===platform);
+  const totAd=filteredAds.reduce((a,c)=>({spend:a.spend+c.spend,leads:a.leads+c.leads,orders:a.orders+c.orders,revenue:a.revenue+c.revenue}),{spend:0,leads:0,orders:0,revenue:0});
+
+  return<div className="fade-in" style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",background:"#F5F7FA"}}>
+    <div style={{background:"#fff",borderBottom:"1px solid #E5E7EB",flexShrink:0}}>
+      <div style={{padding:"16px 24px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div>
+          <h1 style={{fontSize:17,fontWeight:700,letterSpacing:"-.4px",marginBottom:2}}>広告マネージャー</h1>
+          <p style={{fontSize:11.5,color:"#9CA3AF"}}>Meta / Google / TikTok — 統合広告分析</p>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <div style={{display:"flex",background:"#F1F5F9",borderRadius:7,padding:3,gap:2}}>
+            {[["all","全媒体"],["Meta","Meta"],["Google","Google"],["TikTok","TikTok"]].map(([v,l])=><button key={v} onClick={()=>setPlatform(v)} style={{padding:"4px 10px",borderRadius:5,border:"none",cursor:"pointer",fontSize:12,background:platform===v?"#fff":"transparent",color:platform===v?"#0D9488":"#6B7280",fontWeight:platform===v?600:400,boxShadow:platform===v?"0 1px 3px rgba(0,0,0,.08)":"none",transition:"all .12s"}}>{l}</button>)}
+          </div>
+          <div style={{display:"flex",background:"#F1F5F9",borderRadius:7,padding:3,gap:2}}>
+            {[["3m","3ヶ月"],["6m","6ヶ月"],["all","全期間"]].map(([v,l])=><button key={v} onClick={()=>setPeriod(v)} style={{padding:"4px 10px",borderRadius:5,border:"none",cursor:"pointer",fontSize:12,background:period===v?"#fff":"transparent",color:period===v?"#0D9488":"#6B7280",fontWeight:period===v?600:400,boxShadow:period===v?"0 1px 3px rgba(0,0,0,.08)":"none",transition:"all .12s"}}>{l}</button>)}
+          </div>
+        </div>
+      </div>
+      {/* KPIs */}
+      <div style={{display:"flex",borderTop:"1px solid #E5E7EB"}}>
+        {[
+          {l:"総広告費",v:yen(totAd.spend),c:"+5.4%",up:false},
+          {l:"総リード数",v:num(totAd.leads)+"件",c:"+34%",up:true},
+          {l:"受注数",v:num(totAd.orders)+"件",c:"+28%",up:true},
+          {l:"総受注金額",v:yen(totAd.revenue),c:"+41%",up:true},
+          {l:"ROAS",v:(totAd.revenue/totAd.spend).toFixed(1)+"x",c:"+18%",up:true},
+          {l:"CPO",v:yen(Math.round(totAd.spend/totAd.orders)),c:"-12%",up:true},
+        ].map((k,i)=><div key={i} className="kpi">
+          <div className="kpi-label">{k.l}</div>
+          <div className="kpi-val" style={{fontSize:17}}>{k.v}</div>
+          <div style={{display:"flex",alignItems:"center",gap:7}}><span className="kpi-chg" style={{color:k.up?"#10B981":"#EF4444"}}>{k.c}</span><Spark pos={k.up}/></div>
+        </div>)}
+      </div>
+      <div className="tab-bar">
+        {[["summary","全体サマリー"],["bycampaign","広告別詳細"],["daily","日別データ"],["listsummary","リスト別集計"],["tracking","リード追客"]].map(([id,lbl])=><div key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{lbl}</div>)}
+      </div>
+    </div>
+    <div style={{flex:1,overflow:"auto",padding:"16px 24px"}}>
+      {tab==="summary"&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        <div className="card"><div className="card-header"><div className="card-title">広告費 vs リード数</div></div><div style={{padding:"16px 20px"}}><BarLineChart data={pData} xKey="m" barKey="spend" lineKey="leads" barLabel="広告費" lineLabel="リード数"/></div></div>
+        <div className="card"><div className="card-header"><div className="card-title">ROAS 推移</div></div><div style={{padding:"16px 20px"}}><LineChart data={pData} xKey="m" yKey="roas" color="#10B981" fmt={v=>v.toFixed(0)+"%"}/></div></div>
+        <div className="card"><div className="card-header"><div className="card-title">CPA 推移</div></div><div style={{padding:"16px 20px"}}><LineChart data={pData} xKey="m" yKey="cpa" color="#F59E0B" fmt={v=>"¥"+v.toFixed(0)}/></div></div>
+        <div className="card"><div className="card-header"><div className="card-title">月次リード獲得数</div></div><div style={{padding:"16px 20px"}}><LineChart data={pData} xKey="m" yKey="leads" color="#3B82F6" fmt={v=>v.toFixed(0)+"件"}/></div></div>
+      </div>}
+      {tab==="bycampaign"&&<div className="card">
+        <div className="card-header"><div className="card-title">広告別パフォーマンス</div><span style={{fontSize:11.5,color:"#9CA3AF"}}>{filteredAds.length}件</span></div>
+        <div style={{overflowX:"auto"}}>
+          <table className="tbl">
+            <thead><tr>
+              <th className="left" style={{minWidth:200}}>広告名</th>
+              <th className="left">媒体</th>
+              <th>広告費</th><th>リード</th><th>クリック</th><th>CPA</th><th>CTR</th><th>CPC</th><th>CPM</th><th>受注数</th><th>受注金額</th><th>ROAS</th>
+            </tr></thead>
+            <tbody>
+              {filteredAds.map(r=><tr key={r.id} onClick={()=>{setSelAd(r);setTab("daily");}}>
+                <td className="left" style={{fontWeight:500}}>{r.name}</td>
+                <td className="left"><PTag p={r.platform}/></td>
+                <td className="tabnum">{yen(r.spend)}</td>
+                <td className="tabnum" style={{color:"#0D9488",fontWeight:600}}>{r.leads}</td>
+                <td className="tabnum">{num(r.clicks)}</td>
+                <td className="tabnum" style={{color:r.cpa>5000?"#DC2626":"#15803D"}}>{yen(r.cpa)}</td>
+                <td className="tabnum">{pct(r.ctr)}</td>
+                <td className="tabnum">{yen(r.cpc)}</td>
+                <td className="tabnum">{yen(r.cpm)}</td>
+                <td className="tabnum" style={{fontWeight:600}}>{r.orders}</td>
+                <td className="tabnum" style={{color:"#0D9488",fontWeight:600}}>{yen(r.revenue)}</td>
+                <td className="tabnum" style={{color:r.roas>200?"#15803D":r.roas>100?"#92400E":"#DC2626",fontWeight:700}}>{r.roas.toFixed(1)}x</td>
+              </tr>)}
+              <tr className="sum">
+                <td className="left" colSpan={2}>合計</td>
+                <td className="tabnum">{yen(totAd.spend)}</td>
+                <td className="tabnum" style={{color:"#0D9488"}}>{num(totAd.leads)}</td>
+                <td></td>
+                <td className="tabnum">{yen(Math.round(totAd.spend/totAd.leads))}</td>
+                <td colSpan={4}></td>
+                <td className="tabnum" style={{color:"#0D9488"}}>{yen(totAd.revenue)}</td>
+                <td className="tabnum" style={{color:"#15803D"}}>{(totAd.revenue/totAd.spend).toFixed(1)}x</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>}
+      {tab==="daily"&&<div>
+        <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+          <span style={{fontSize:12.5,fontWeight:500,color:"#374151"}}>表示中の広告：</span>
+          <select value={selAd.id} onChange={e=>setSelAd(CAMPAIGNS_AD.find(c=>c.id===e.target.value))} style={{padding:"5px 10px",border:"1px solid #E5E7EB",borderRadius:6,fontSize:12,background:"#fff",cursor:"pointer"}}>
+            {CAMPAIGNS_AD.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <PTag p={selAd.platform}/>
+        </div>
+        <AdDailyTable data={DAILY_SEP} title={`${selAd.name} — 2025年9月`}/>
+      </div>}
+      {tab==="listsummary"&&<ListSummaryTable/>}
+      {tab==="tracking"&&<LeadTrackingTable/>}
+    </div>
+  </div>;
+}
+
+// ─── リード管理 (merged) ─────────────────────────────────
+function LeadMgmtView(){
+  const [tab,setTab]=useState("list");
+  const [selList,setSelList]=useState(null);
+  const [selLead,setSelLead]=useState(null);
+  const [search,setSearch]=useState("");
+
+  const rows=LEAD_ROWS.filter(r=>!search||(r.company+r.id).includes(search));
+  const listRows=selList?rows.filter(r=>r.listId===selList.id):rows;
+
+  const callsForList=selList?FM_CALLS.filter(r=>r.taId.startsWith("TA")):FM_CALLS;
+
+  return<div className="fade-in" style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",background:"#F5F7FA"}}>
+    <div style={{background:"#fff",borderBottom:"1px solid #E5E7EB",flexShrink:0}}>
+      <div style={{padding:"14px 24px 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div>
+          <h1 style={{fontSize:16,fontWeight:700,letterSpacing:"-.3px",marginBottom:2}}>リード管理</h1>
+          <p style={{fontSize:11.5,color:"#9CA3AF"}}>リスト別・リード一覧・FileMaker連携</p>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:7,background:"#F9FAFB",borderRadius:7,padding:"5px 11px",border:"1px solid #E5E7EB"}}>
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="5" cy="5" r="3.5" stroke="#9CA3AF" strokeWidth="1.3"/><path d="M8 8l2 2" stroke="#9CA3AF" strokeWidth="1.3" strokeLinecap="round"/></svg>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="会社名・IDで検索..." style={{border:"none",background:"transparent",outline:"none",fontSize:12,width:140}}/>
+          </div>
+          {selList&&<button className="btn btn-ghost" style={{fontSize:11.5}} onClick={()=>setSelList(null)}>← 全リスト</button>}
+          <button className="btn btn-primary" style={{fontSize:11.5}}>+ 新規リード</button>
+        </div>
+      </div>
+      <div className="tab-bar">
+        {[["list","リスト一覧"],["leads","リード一覧"],["calls","コール履歴"]].map(([id,lbl])=><div key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{lbl}</div>)}
+      </div>
+    </div>
+    <div style={{flex:1,overflow:"auto"}}>
+      {tab==="list"&&<div style={{padding:"16px 24px"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+          {LISTS.map(l=><div key={l.id} className="card" style={{padding:"14px 16px",cursor:"pointer",borderColor:selList?.id===l.id?"#0D9488":"#E5E7EB",borderWidth:selList?.id===l.id?2:1}} onClick={()=>setSelList(l)}>
+            <div style={{fontSize:12,fontWeight:600,marginBottom:6,color:"#111827"}}>{l.name}</div>
+            <div style={{fontSize:11,color:"#9CA3AF",marginBottom:10}}>{l.campaign}</div>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+              <span style={{fontSize:11,color:"#6B7280"}}>総リード</span>
+              <span className="tabnum" style={{fontSize:12,fontWeight:600,color:"#0D9488"}}>{l.count}件</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+              <span style={{fontSize:11,color:"#6B7280"}}>アポOK</span>
+              <span className="tabnum" style={{fontSize:12,fontWeight:500,color:"#15803D"}}>{l.apo}件</span>
+            </div>
+            <div style={{height:4,background:"#F1F5F9",borderRadius:2,marginTop:8}}>
+              <div style={{height:4,background:"#0D9488",borderRadius:2,width:`${(l.complete/l.count)*100}%`}}></div>
+            </div>
+            <div style={{fontSize:10.5,color:"#9CA3AF",marginTop:4}}>完了率 {((l.complete/l.count)*100).toFixed(1)}%</div>
+          </div>)}
+        </div>
+      </div>}
+      {tab==="leads"&&<div>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5}}>
+          <thead><tr style={{background:"#F9FAFB",position:"sticky",top:0,zIndex:2}}>
+            <th style={{padding:"8px 16px",textAlign:"left",fontSize:10.5,fontWeight:600,color:"#6B7280",borderBottom:"1px solid #E5E7EB"}}>#</th>
+            <th style={{padding:"8px 12px",textAlign:"left",fontSize:10.5,fontWeight:600,color:"#6B7280",borderBottom:"1px solid #E5E7EB"}}>ID</th>
+            <th style={{padding:"8px 12px",textAlign:"left",fontSize:10.5,fontWeight:600,color:"#6B7280",borderBottom:"1px solid #E5E7EB",minWidth:130}}>会社名</th>
+            <th style={{padding:"8px 12px",textAlign:"left",fontSize:10.5,fontWeight:600,color:"#6B7280",borderBottom:"1px solid #E5E7EB"}}>広告</th>
+            <th style={{padding:"8px 12px",textAlign:"left",fontSize:10.5,fontWeight:600,color:"#6B7280",borderBottom:"1px solid #E5E7EB"}}>業種</th>
+            <th style={{padding:"8px 12px",textAlign:"left",fontSize:10.5,fontWeight:600,color:"#6B7280",borderBottom:"1px solid #E5E7EB"}}>代表者</th>
+            <th style={{padding:"8px 12px",textAlign:"left",fontSize:10.5,fontWeight:600,color:"#6B7280",borderBottom:"1px solid #E5E7EB"}}>地域</th>
+            <th style={{padding:"8px 12px",textAlign:"left",fontSize:10.5,fontWeight:600,color:"#6B7280",borderBottom:"1px solid #E5E7EB"}}>電話</th>
+            <th style={{padding:"8px 12px",textAlign:"left",fontSize:10.5,fontWeight:600,color:"#6B7280",borderBottom:"1px solid #E5E7EB"}}>結果</th>
+            <th style={{padding:"8px 12px",textAlign:"center",fontSize:10.5,fontWeight:600,color:"#6B7280",borderBottom:"1px solid #E5E7EB"}}>架電数</th>
+            <th style={{padding:"8px 12px",textAlign:"left",fontSize:10.5,fontWeight:600,color:"#6B7280",borderBottom:"1px solid #E5E7EB"}}>日時</th>
+          </tr></thead>
+          <tbody>
+            {listRows.map((r,i)=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>setSelLead(r)} onMouseEnter={e=>[...e.currentTarget.cells].forEach(td=>td.style.background="#F0FDF4")} onMouseLeave={e=>[...e.currentTarget.cells].forEach(td=>td.style.background="")}>
+              <td style={{padding:"8px 16px",color:"#9CA3AF"}}>{i+1}</td>
+              <td style={{padding:"8px 12px",fontFamily:"DM Mono",fontSize:10.5,color:"#6B7280"}}>{r.id}</td>
+              <td style={{padding:"8px 12px",fontWeight:500}}>{r.company}</td>
+              <td style={{padding:"8px 12px",fontSize:10.5,color:"#6B7280",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis"}}>{r.ad}</td>
+              <td style={{padding:"8px 12px",color:"#6B7280"}}>{r.industry}</td>
+              <td style={{padding:"8px 12px"}}>{r.rep}</td>
+              <td style={{padding:"8px 12px",color:"#6B7280"}}>{r.area}</td>
+              <td style={{padding:"8px 12px",fontFamily:"DM Mono",fontSize:10.5,color:r.phone?"#2563EB":"#D1D5DB"}}>{r.phone||"—"}</td>
+              <td style={{padding:"8px 12px"}}><RBadge r={r.result}/></td>
+              <td style={{padding:"8px 12px",textAlign:"center",fontFamily:"DM Mono"}}>{r.calls}</td>
+              <td style={{padding:"8px 12px",fontFamily:"DM Mono",fontSize:10.5,color:"#6B7280"}}>{r.date}</td>
+            </tr>)}
+          </tbody>
+        </table>
+        {selLead&&<div style={{position:"fixed",top:0,right:0,bottom:0,width:400,background:"#fff",borderLeft:"1px solid #E5E7EB",zIndex:50,overflow:"auto",padding:"20px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <span style={{fontSize:14,fontWeight:700}}>{selLead.company}</span>
+            <button onClick={()=>setSelLead(null)} style={{background:"none",border:"none",cursor:"pointer",color:"#6B7280",fontSize:18}}>×</button>
+          </div>
+          <div style={{fontSize:11.5,color:"#9CA3AF",marginBottom:16,fontFamily:"DM Mono"}}>{selLead.id} · {selLead.listId}</div>
+          {[["業種",selLead.industry],["代表者",selLead.rep],["地域",selLead.area],["電話",selLead.phone],["架電結果",selLead.result],["架電数",selLead.calls],["広告",selLead.ad],["問い合わせ日時",selLead.date]].map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #F1F5F9"}}>
+            <span style={{fontSize:12,color:"#9CA3AF"}}>{l}</span>
+            <span style={{fontSize:12,fontWeight:500}}>{v||"—"}</span>
+          </div>)}
+          <div style={{marginTop:16}}>
+            <button className="btn btn-primary" style={{width:"100%",justifyContent:"center",marginBottom:8}}>商談を作成</button>
+            <button className="btn btn-ghost" style={{width:"100%",justifyContent:"center"}}>架電を記録</button>
+          </div>
+        </div>}
+      </div>}
+      {tab==="calls"&&<div>
+        <div style={{padding:"10px 24px",background:"#fff",borderBottom:"1px solid #E5E7EB",display:"flex",gap:8,alignItems:"center"}}>
+          <div style={{fontSize:12,color:"#6B7280"}}>コール履歴 <span style={{fontFamily:"DM Mono",fontWeight:600,color:"#111827"}}>{callsForList.length}</span> 件</div>
+          {selList&&<span style={{fontSize:11.5,color:"#0D9488"}}>— {selList.name}</span>}
+          <div style={{marginLeft:"auto",display:"flex",gap:8}}>
+            <span style={{fontSize:11,color:"#22C55E",display:"flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:"50%",background:"#22C55E",display:"inline-block",animation:"pulse 2s infinite"}}></span>FileMaker API 接続中</span>
+          </div>
+        </div>
+        <div style={{overflowX:"auto"}}>
+          <table className="tbl">
+            <thead><tr>
+              <th className="left">顧客ID</th><th className="left">リードID</th><th className="left">結果</th>
+              <th className="left">開始日</th><th className="left">開始時刻</th><th className="left">終了時刻</th>
+              <th>時間(分)</th><th>時間(秒)</th><th className="left">担当者</th><th className="left">代表Hit</th><th className="left">リストレベル</th>
+            </tr></thead>
+            <tbody>
+              {callsForList.map((r,i)=><tr key={i}>
+                <td className="left tabnum" style={{color:"#0D9488",fontWeight:500}}>{r.csId}</td>
+                <td className="left tabnum" style={{color:"#2563EB"}}>{r.taId}</td>
+                <td className="left"><RBadge r={r.result==="決め"?"商談中":r.result==="NG"?"NG":r.result==="留守"?"先日":r.result}/></td>
+                <td className="left tabnum" style={{fontSize:11,color:"#6B7280"}}>{r.startDate}</td>
+                <td className="left tabnum" style={{color:"#0D9488"}}>{r.st}</td>
+                <td className="left tabnum" style={{color:"#6B7280"}}>{r.et}</td>
+                <td className="tabnum">{r.mins.toFixed(2)}</td>
+                <td className="tabnum">{r.secs}</td>
+                <td className="left">{r.who}</td>
+                <td className="left">{r.repHit&&<span className="tag tag-green">{r.repHit}</span>}</td>
+                <td className="left" style={{fontSize:11,color:"#6B7280"}}>{r.level}</td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+      </div>}
+    </div>
+  </div>;
+}
+
+// ─── 顧客&コール履歴 ──────────────────────────────────────
+const FM_DETAIL={csId:"CS0140436",listDate:"2025/06/22",industry:"インバウンド",newFlag:"谷川 聖斗",createdAt:"2025/06/22 19:42:41",company:"村上工業",rep:"村上浩太",role:"草刈り・伐採・便利屋",holidays:["月","水","金"],prefecture:"福岡県",phone:"818052800503",mail:"",address:"福岡県",calls:[{date:"2025/06/23",tf:"16:25",tt:"16:26",who:"谷川 聖斗",result:"ポータルサイ",detail:"金額ネック",status:"送付済",mins:0.3},{date:"2025/06/24",tf:"10:30",tt:"10:45",who:"谷川 聖斗",result:"折り返し",detail:"検討中",status:"",mins:15.2}]};
+
+function CustomerCallView(){
+  const [view,setView]=useState("list");
+  return<div className="fade-in" style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",background:"#F5F7FA"}}>
+    <div style={{background:"#fff",borderBottom:"1px solid #E5E7EB",flexShrink:0,padding:"14px 24px",display:"flex",alignItems:"center",gap:12}}>
+      <div>
+        <h1 style={{fontSize:16,fontWeight:700,letterSpacing:"-.3px"}}>顧客 &amp; コール履歴</h1>
+        <p style={{fontSize:11.5,color:"#9CA3AF"}}>リストIDに紐づくコール履歴管理</p>
+      </div>
+      <div style={{marginLeft:"auto",display:"flex",gap:8}}>
+        {view==="detail"&&<button className="btn btn-ghost" style={{fontSize:11.5}} onClick={()=>setView("list")}>← リストへ戻る</button>}
+        <button className="btn btn-primary" style={{fontSize:11.5}} onClick={()=>setView("detail")}>詳細を開く</button>
+      </div>
+    </div>
+    {view==="list"
+      ?<div style={{flex:1,overflow:"auto"}}>
+        <table className="tbl">
+          <thead><tr>
+            <th className="left">顧客ID</th><th className="left">リードID</th><th className="left">コール結果</th>
+            <th className="left">開始日</th><th className="left">開始</th><th className="left">終了</th>
+            <th>分</th><th>秒</th><th className="left">担当</th><th className="left">代表Hit</th><th className="left">リストLv</th>
+          </tr></thead>
+          <tbody>
+            {FM_CALLS.map((r,i)=><tr key={i} onClick={()=>setView("detail")} style={{cursor:"pointer"}} onMouseEnter={e=>[...e.currentTarget.cells].forEach(td=>td.style.background="#F0FDF4")} onMouseLeave={e=>[...e.currentTarget.cells].forEach(td=>td.style.background="")}>
+              <td className="left tabnum" style={{color:"#0D9488",fontWeight:500}}>{r.csId}</td>
+              <td className="left tabnum" style={{color:"#2563EB"}}>{r.taId}</td>
+              <td className="left"><span style={{fontSize:11,fontWeight:500,color:r.result==="NG"?"#DC2626":r.result==="決め"?"#1D4ED8":r.result==="留守"?"#7C3AED":"#374151"}}>{r.result}</span></td>
+              <td className="left tabnum" style={{fontSize:11,color:"#6B7280"}}>{r.startDate}</td>
+              <td className="left tabnum" style={{color:"#0D9488"}}>{r.st}</td>
+              <td className="left tabnum" style={{color:"#6B7280"}}>{r.et}</td>
+              <td className="tabnum">{r.mins.toFixed(2)}</td><td className="tabnum">{r.secs}</td>
+              <td className="left">{r.who}</td>
+              <td className="left">{r.repHit&&<span className="tag tag-green">{r.repHit}</span>}</td>
+              <td className="left" style={{fontSize:11,color:"#6B7280"}}>{r.level}</td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+      :<div style={{flex:1,overflow:"auto",padding:"16px 24px"}}>
+        <div className="fm-sec">
+          <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:12}}>
+            {[["顧客ID",FM_DETAIL.csId],["リスト譲渡日",FM_DETAIL.listDate],["業種",FM_DETAIL.industry],["新人フラグ",FM_DETAIL.newFlag],["リスト作成日時",FM_DETAIL.createdAt],["都道府県",FM_DETAIL.prefecture]].map(([l,v])=><div key={l} className="fm-field"><span className="fm-label">{l}</span><span className="fm-value">{v}</span></div>)}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",gap:10}}>
+            <div className="fm-field"><span className="fm-label">会社名</span><span className="fm-value">{FM_DETAIL.company}</span></div>
+            <div className="fm-field"><span className="fm-label">代表名</span><span className="fm-value">{FM_DETAIL.rep}</span></div>
+            <div className="fm-field"><span className="fm-label">役職</span><span className="fm-value" style={{fontSize:10.5}}>{FM_DETAIL.role}</span></div>
+            <div className="fm-field"><span className="fm-label">定休日</span><div style={{display:"flex",gap:4,marginTop:4}}>{["月","火","水","木","金"].map(d=><label key={d} style={{display:"flex",alignItems:"center",gap:2,fontSize:11}}><input type="checkbox" defaultChecked={FM_DETAIL.holidays.includes(d)} style={{accentColor:"#0D9488"}}/>{d}</label>)}</div></div>
+            <div className="fm-field"><span className="fm-label">電話番号</span><span className="fm-value" style={{color:"#1D4ED8"}}>{FM_DETAIL.phone}</span></div>
+          </div>
+        </div>
+        <div className="fm-sec">
+          <div style={{fontSize:11,fontWeight:600,color:"#6B7280",textTransform:"uppercase",letterSpacing:".06em",marginBottom:10}}>コール履歴</div>
+          {FM_DETAIL.calls.map((c,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:"1px solid #F1F5F9",fontSize:12}}>
+            <span className="tabnum" style={{color:"#6B7280",minWidth:90}}>{c.date}</span>
+            <span className="tabnum" style={{color:"#0D9488"}}>{c.tf}</span>
+            <span style={{color:"#D1D5DB"}}>→</span>
+            <span className="tabnum" style={{color:"#0D9488"}}>{c.tt}</span>
+            <span style={{fontWeight:500}}>{c.who}</span>
+            <span className="tag tag-blue">{c.result}</span>
+            <span style={{color:"#6B7280"}}>{c.detail}</span>
+            <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
+              {c.status&&<span className="tag tag-green">{c.status}</span>}
+              <span className="tabnum" style={{color:"#9CA3AF",fontSize:10.5}}>{c.mins} min</span>
+            </div>
+          </div>)}
+          <button className="btn btn-ghost" style={{marginTop:10,width:"100%",justifyContent:"center",fontSize:12}}>+ コール追加</button>
+        </div>
+      </div>
+    }
+  </div>;
+}
+
+// ─── 商談データ ───────────────────────────────────────────
+function DealsView(){
+  const stages=["ニーズ確認","提案済み","商談中","受注","失注"];
+  const stageColor={"ニーズ確認":"#F59E0B","提案済み":"#3B82F6","商談中":"#8B5CF6","受注":"#10B981","失注":"#EF4444"};
+  const [view,setView]=useState("pipeline");
+  const won=DEALS.filter(d=>d.stage==="受注");
+  const wonRevenue=won.reduce((a,d)=>a+d.amount,0);
+  const inProgress=DEALS.filter(d=>!["受注","失注"].includes(d.stage));
+  const expectedRevenue=inProgress.reduce((a,d)=>a+Math.round(d.amount*d.prob/100),0);
+  return<div className="fade-in" style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",background:"#F5F7FA"}}>
+    <div style={{background:"#fff",borderBottom:"1px solid #E5E7EB",flexShrink:0}}>
+      <div style={{padding:"14px 24px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div>
+          <h1 style={{fontSize:16,fontWeight:700,letterSpacing:"-.3px",marginBottom:2}}>商談データ</h1>
+          <p style={{fontSize:11.5,color:"#9CA3AF"}}>リード→商談→受注のパイプライン管理</p>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <div style={{display:"flex",background:"#F1F5F9",borderRadius:7,padding:3,gap:2}}>
+            {[["pipeline","パイプライン"],["list","リスト"]].map(([v,l])=><button key={v} onClick={()=>setView(v)} style={{padding:"4px 10px",borderRadius:5,border:"none",cursor:"pointer",fontSize:12,background:view===v?"#fff":"transparent",color:view===v?"#0D9488":"#6B7280",fontWeight:view===v?600:400,transition:"all .12s"}}>{l}</button>)}
+          </div>
+          <button className="btn btn-primary" style={{fontSize:11.5}}>+ 新規商談</button>
+        </div>
+      </div>
+      <div style={{display:"flex",borderTop:"1px solid #E5E7EB"}}>
+        {[
+          {l:"商談数",v:DEALS.length+"件"},{l:"進行中",v:inProgress.length+"件"},{l:"受注済み",v:won.length+"件"},{l:"受注金額",v:yen(wonRevenue)},{l:"期待売上",v:yen(expectedRevenue)},
+        ].map((k,i)=><div key={i} className="kpi" style={{padding:"12px 20px"}}>
+          <div className="kpi-label">{k.l}</div>
+          <div style={{fontSize:16,fontWeight:700,fontFamily:"DM Mono",letterSpacing:"-.4px"}}>{k.v}</div>
+        </div>)}
+      </div>
+    </div>
+    <div style={{flex:1,overflow:"auto",padding:"16px 24px"}}>
+      {view==="pipeline"&&<div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+        {stages.map(stage=>{
+          const items=DEALS.filter(d=>d.stage===stage);
+          const tot=items.reduce((a,d)=>a+d.amount,0);
+          return<div key={stage} className="pipe-col">
+            <div style={{padding:"8px 0",marginBottom:10,borderBottom:"2px solid",borderColor:stageColor[stage]}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:12.5,fontWeight:600,color:stageColor[stage]}}>{stage}</span>
+                <span style={{fontSize:11,color:"#9CA3AF",fontFamily:"DM Mono"}}>{items.length}</span>
+              </div>
+              {tot>0&&<div style={{fontSize:11,color:"#6B7280",fontFamily:"DM Mono",marginTop:2}}>{yen(tot)}</div>}
+            </div>
+            {items.map(d=><div key={d.id} className="pipe-card">
+              <div style={{fontSize:12.5,fontWeight:600,marginBottom:5}}>{d.company}</div>
+              {d.amount>0&&<div style={{fontSize:13,fontWeight:700,color:stageColor[stage],marginBottom:5,fontFamily:"DM Mono"}}>{yen(d.amount)}</div>}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}}>
+                <span style={{fontSize:11,color:"#9CA3AF"}}>{d.assignee}</span>
+                {d.prob>0&&d.prob<100&&<span style={{fontSize:10.5,color:"#6B7280",background:"#F1F5F9",padding:"1px 6px",borderRadius:4,fontFamily:"DM Mono"}}>{d.prob}%</span>}
+              </div>
+              <div style={{fontSize:10.5,color:"#D1D5DB",marginTop:4,fontFamily:"DM Mono"}}>{d.updated}</div>
+            </div>)}
+          </div>;
+        })}
+      </div>}
+      {view==="list"&&<div className="card">
+        <div className="card-header"><div className="card-title">商談一覧</div></div>
+        <table className="tbl">
+          <thead><tr>
+            <th className="left">会社名</th><th className="left">リードID</th><th className="left">フェーズ</th>
+            <th>金額</th><th>確度</th><th>期待売上</th><th className="left">担当者</th><th className="left">更新日</th>
+          </tr></thead>
+          <tbody>
+            {DEALS.map(d=><tr key={d.id}>
+              <td className="left" style={{fontWeight:500}}>{d.company}</td>
+              <td className="left tabnum" style={{fontSize:11,color:"#6B7280"}}>{d.lead}</td>
+              <td className="left"><RBadge r={d.stage}/></td>
+              <td className="tabnum" style={{fontWeight:d.amount>0?600:400,color:d.amount>0?"#111827":"#D1D5DB"}}>{d.amount>0?yen(d.amount):"—"}</td>
+              <td className="tabnum" style={{color:d.prob===100?"#10B981":d.prob>50?"#F59E0B":"#6B7280"}}>{d.prob}%</td>
+              <td className="tabnum" style={{color:"#0D9488"}}>{d.prob>0?yen(Math.round(d.amount*d.prob/100)):"—"}</td>
+              <td className="left" style={{fontSize:12.5}}>{d.assignee}</td>
+              <td className="left tabnum" style={{fontSize:11,color:"#6B7280"}}>{d.updated}</td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>}
+    </div>
+  </div>;
+}
+
+// ─── 顧客データ ───────────────────────────────────────────
+function CustomerDataView(){
+  const mrrByMonth=MRR_MONTHS.map((m,mi)=>({m,tot:MRR_CUSTOMERS.reduce((a,c)=>a+(c.cols[mi]||0),0)}));
+  return<div className="fade-in" style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",background:"#F5F7FA"}}>
+    <div style={{background:"#fff",borderBottom:"1px solid #E5E7EB",flexShrink:0,padding:"14px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div>
+        <h1 style={{fontSize:16,fontWeight:700,letterSpacing:"-.3px"}}>顧客データ</h1>
+        <p style={{fontSize:11.5,color:"#9CA3AF"}}>受注済み顧客のMRR・継続管理</p>
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        <button className="btn btn-ghost" style={{fontSize:11.5}}>CSVエクスポート</button>
+        <button className="btn btn-primary" style={{fontSize:11.5}}>+ 顧客追加</button>
+      </div>
+    </div>
+    <div style={{flex:1,overflow:"auto",padding:"16px 24px"}}>
+      <div style={{display:"flex",gap:12,marginBottom:16}}>
+        {[
+          {l:"顧客数",v:MRR_CUSTOMERS.length+"社"},{l:"当月MRR",v:yen(mrrByMonth[10].tot)},{l:"累計MRR",v:yen(mrrByMonth.reduce((a,m)=>a+m.tot,0))},{l:"平均単価",v:yen(Math.round(mrrByMonth[10].tot/MRR_CUSTOMERS.filter(c=>c.cols[10]).length))},{l:"チャーン率",v:"2.1%"},
+        ].map((k,i)=><div key={i} className="card kpi">{k.l}<div style={{fontSize:18,fontWeight:700,fontFamily:"DM Mono",letterSpacing:"-.4px",marginTop:6}}>{k.v}</div></div>)}
+      </div>
+      {/* MRR bar */}
+      <div className="card" style={{padding:"16px 20px",marginBottom:16}}>
+        <div style={{fontSize:13,fontWeight:600,marginBottom:12}}>MRR 月次推移</div>
+        <div style={{display:"flex",alignItems:"flex-end",gap:8,height:80}}>
+          {mrrByMonth.map((m,i)=>{const max=Math.max(...mrrByMonth.map(x=>x.tot));const h=max>0?(m.tot/max)*64:0;return<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+            <div style={{width:"100%",borderRadius:"3px 3px 0 0",background:i===10?"#0D9488":"#BAE6FD",height:`${h}px`,minHeight:m.tot?3:0,transition:"height .3s"}}></div>
+            <div style={{fontSize:9,color:"#9CA3AF"}}>{m.m}</div>
+          </div>;})}
+        </div>
+      </div>
+      {/* MRR table */}
+      <div className="card" style={{overflow:"hidden"}}>
+        <div className="card-header"><div className="card-title">顧客別 MRR 管理表</div></div>
+        <div style={{overflowX:"auto",maxHeight:300}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+            <thead><tr style={{background:"#1E293B",position:"sticky",top:0,zIndex:2}}>
+              <th style={{padding:"7px 14px",textAlign:"left",fontSize:10.5,fontWeight:500,color:"#94A3B8",position:"sticky",left:0,background:"#0F172A",minWidth:140,borderRight:"1px solid #2D3748"}}>顧客名</th>
+              <th style={{padding:"7px 12px",textAlign:"left",fontSize:10.5,fontWeight:500,color:"#94A3B8"}}>プラン</th>
+              <th style={{padding:"7px 12px",textAlign:"right",fontSize:10.5,fontWeight:500,color:"#94A3B8"}}>月額</th>
+              {MRR_MONTHS.map(m=><th key={m} style={{padding:"7px 10px",textAlign:"right",fontSize:10.5,fontWeight:500,color:"#94A3B8"}}>{m}</th>)}
+            </tr></thead>
+            <tbody>
+              {MRR_CUSTOMERS.map((c,i)=><tr key={i}>
+                <td style={{padding:"6px 14px",fontWeight:500,position:"sticky",left:0,background:i%2===0?"#fff":"#F8FAFC",borderRight:"1px solid #E5E7EB"}}>{c.name}</td>
+                <td style={{padding:"6px 12px",fontSize:11}}><span className="tag tag-blue">{c.plan}</span></td>
+                <td style={{padding:"6px 12px",textAlign:"right",fontFamily:"DM Mono",fontWeight:500}}>{yen(c.fee)}</td>
+                {c.cols.map((v,mi)=><td key={mi} style={{padding:"6px 10px",textAlign:"right",fontFamily:"DM Mono",color:v?"#0D9488":"#E5E7EB",fontWeight:v?600:400,background:i%2===0?"#fff":"#F8FAFC"}}>{v?yen(v):""}</td>)}
+              </tr>)}
+              <tr style={{borderTop:"2px solid #E5E7EB"}}>
+                <td style={{padding:"7px 14px",fontWeight:700,position:"sticky",left:0,background:"#F0FDF4",borderRight:"1px solid #E5E7EB"}}>月計</td>
+                <td colSpan={2} style={{background:"#F0FDF4"}}></td>
+                {MRR_MONTHS.map((m,mi)=>{const tot=MRR_CUSTOMERS.reduce((a,c)=>a+(c.cols[mi]||0),0);return<td key={mi} style={{padding:"7px 10px",textAlign:"right",fontFamily:"DM Mono",fontWeight:700,color:tot?"#0D9488":"#D1D5DB",background:"#F0FDF4"}}>{tot?yen(tot):""}</td>;})}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+// ─── 集計データ ───────────────────────────────────────────
+function ReportsView(){
+  const monthly=MS.map((m,i)=>({m,sell:LIST_SUMMARY.総受注額[i]||0,spend:LIST_SUMMARY.広告費[i],leads:LIST_SUMMARY.リード[i],roas:LIST_SUMMARY.ROAS[i],cpa:LIST_SUMMARY.CPA[i],apo:LIST_SUMMARY.アポOK[i],order:LIST_SUMMARY.受注[i]}));
+  const tot={sell:monthly.reduce((a,m)=>a+m.sell,0),spend:monthly.reduce((a,m)=>a+m.spend,0),leads:monthly.reduce((a,m)=>a+m.leads,0),apo:monthly.reduce((a,m)=>a+m.apo,0),order:monthly.reduce((a,m)=>a+m.order,0)};
+  tot.roas=tot.spend>0?tot.sell/tot.spend*100:0;tot.cpa=tot.leads>0?Math.round(tot.spend/tot.leads):0;tot.cpo=tot.order>0?Math.round(tot.spend/tot.order):0;
+  return<div className="fade-in" style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",background:"#F5F7FA"}}>
+    <div style={{background:"#fff",borderBottom:"1px solid #E5E7EB",flexShrink:0,padding:"14px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div><h1 style={{fontSize:16,fontWeight:700,letterSpacing:"-.3px"}}>集計データ</h1><p style={{fontSize:11.5,color:"#9CA3AF"}}>月次パフォーマンス・財務サマリー</p></div>
+      <div style={{display:"flex",gap:8}}>
+        <button className="btn btn-ghost" style={{fontSize:11.5}}>CSVエクスポート</button>
+        <button className="btn btn-ghost" style={{fontSize:11.5}}>PDFレポート</button>
+      </div>
+    </div>
+    <div style={{flex:1,overflow:"auto",padding:"16px 24px"}}>
+      <div style={{display:"flex",gap:10,marginBottom:16}}>
+        {[{l:"累計売上",v:yen(tot.sell),g:true},{l:"累計広告費",v:yen(tot.spend)},{l:"ROAS",v:tot.roas.toFixed(1)+"%",g:true},{l:"CPO",v:yen(tot.cpo),warn:tot.cpo>100000},{l:"総リード",v:num(tot.leads)},{l:"総受注",v:num(tot.order)+"件"},{l:"アポ率",v:((tot.apo/tot.leads)*100).toFixed(1)+"%"}].map((k,i)=><div key={i} style={{flex:1,background:"#fff",border:`1px solid ${k.warn?"#FECDD3":k.g?"#BBF7D0":"#E5E7EB"}`,borderRadius:10,padding:"12px 14px",background:k.warn?"#FFF1F2":k.g?"#F0FDF4":"#fff"}}>
+          <div style={{fontSize:10.5,color:"#6B7280",marginBottom:6}}>{k.l}</div>
+          <div style={{fontSize:16,fontWeight:700,fontFamily:"DM Mono",letterSpacing:"-.4px",color:k.warn?"#DC2626":k.g?"#15803D":"#111827"}}>{k.v}</div>
+        </div>)}
+      </div>
+      {/* Chart */}
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16,marginBottom:16}}>
+        <div className="card" style={{padding:"16px 20px"}}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:12}}>広告費 vs 受注金額 月次推移</div>
+          <BarLineChart data={monthly} xKey="m" barKey="spend" lineKey="sell" barLabel="広告費" lineLabel="受注金額"/>
+        </div>
+        <div className="card" style={{padding:"16px 20px"}}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:12}}>ROAS 推移</div>
+          <LineChart data={monthly} xKey="m" yKey="roas" color="#10B981" fmt={v=>v.toFixed(0)+"%"}/>
+        </div>
+      </div>
+      {/* Summary table */}
+      <div className="card" style={{overflow:"hidden"}}>
+        <div className="card-header"><div className="card-title">月次パフォーマンス集計表</div></div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5}}>
+            <thead><tr style={{background:"#1E293B"}}>
+              <th style={{padding:"8px 16px",textAlign:"left",fontSize:10.5,fontWeight:500,color:"#94A3B8",position:"sticky",left:0,background:"#0F172A",minWidth:140,borderRight:"1px solid #2D3748"}}>指標</th>
+              <th style={{padding:"8px 12px",textAlign:"right",fontSize:10.5,fontWeight:600,color:"#22C55E",borderRight:"1px solid #2D3748"}}>累計</th>
+              {MS.map(m=><th key={m} style={{padding:"8px 12px",textAlign:"right",fontSize:10.5,fontWeight:500,color:"#94A3B8"}}>{m}</th>)}
+            </tr></thead>
+            <tbody>
+              {[
+                {l:"受注金額",k:"sell",f:v=>v?yen(v):"—",bold:true,g:true},
+                {l:"広告費",k:"spend",f:yen},{l:"リード数",k:"leads",f:num},
+                {l:"アポOK",k:"apo",f:num},{l:"受注数",k:"order",f:num,bold:true},
+                {l:"CPA（広告費÷リード）",k:"cpa",f:yen,warn:true},{l:"ROAS",k:"roas",f:v=>v.toFixed(1)+"%",bold:true,g:true},
+              ].map((row,i)=>{
+                const vals=monthly.map(m=>m[row.k]);
+                const t=row.k==="roas"||row.k==="cpa"?null:(row.k==="sell"?tot.sell:row.k==="spend"?tot.spend:row.k==="leads"?tot.leads:row.k==="apo"?tot.apo:tot.order);
+                return<tr key={i}>
+                  <td style={{padding:"8px 16px",fontWeight:row.bold?600:400,fontSize:12,position:"sticky",left:0,background:i%2===0?"#fff":"#F9FAFB",borderRight:"1px solid #E5E7EB",color:row.warn?"#DC2626":row.g?"#15803D":"#111827"}}>{row.l}</td>
+                  <td style={{padding:"8px 12px",textAlign:"right",fontWeight:700,fontFamily:"DM Mono",color:row.warn?"#DC2626":row.g?"#15803D":"#111827",background:"#F0FDF4",borderRight:"1px solid #E5E7EB"}}>{t!==null?row.f(t):"—"}</td>
+                  {vals.map((v,mi)=><td key={mi} style={{padding:"8px 12px",textAlign:"right",fontFamily:"DM Mono",fontWeight:row.bold?600:400,color:row.warn?"#DC2626":row.g?"#15803D":"#374151",background:i%2===0?"#fff":"#F9FAFB"}}>{row.f(v)}</td>)}
+                </tr>;
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+// ─── AI AGENT ────────────────────────────────────────────
+function AIView(){
+  const [msgs,setMsgs]=useState([
+    {r:"a",t:"こんにちは！GrowthHub AIです。\n広告パフォーマンス、架電スクリプト、リードスコアリング、MRR改善など何でもお手伝いします。"},
+    {r:"a",t:"【今日のインサイト】\n・9月のCPAが¥5,677と上昇傾向です。クリエイティブの見直しを推奨します。\n・Meta Retargetingのアポ率が前月比+8%。このフォーマットを横展開できます。"},
+  ]);
+  const [input,setInput]=useState("");
+  const [typing,setTyping]=useState(false);
+  const box=useRef(null);
+  const replies={"ROAS分析":"📊 **現在のROAS分析：**\n\n✅ Google Search: 619.6x（最高）\n→ 高意図KWへの集中投資で効率最大化。\n\n⚠️ Meta Lead Gen: 135.6x\n→ リード数は最多だが受注率が低い。架電スクリプト改善が鍵。\n\n💡 9月→10月の追客で受注が+40%見込めます。","アポ率改善":"📞 **アポ率改善策：**\n\n現状: 22.4%（9月）\n目標: 30%以上\n\n1. 架電時間帯: 14:00〜16:00に集中（接続率+23%）\n2. 冒頭スクリプト改善: 「30秒だけよろしいですか？」\n3. 見込みA/B/Cの優先順位を付けた再架電\n4. 代表Hit率向上: 「社長さんいらっしゃいますか？」を使用\n\n⚡ 実施で3ヶ月後にCPO ¥231,564 → ¥150,000が期待できます。","MRR改善":"💰 **MRR改善策：**\n\n現状MRR: ¥2,178,000（3月）\nチャーン率: 2.1%\n\n📈 アップセル機会（8社）:\n・シンプルプラン → セミオーダー移行で+¥125,000/社\n・対象: 契約3ヶ月以上で接触頻度が高い顧客\n\n🎯 LTV向上:\n・オンボーディング強化でチャーン-0.8pt\n・6ヶ月でMRR +¥800,000見込み"};
+  const send=async(t)=>{const text=t||input;if(!text.trim())return;setMsgs(m=>[...m,{r:"u",t:text}]);setInput("");setTyping(true);await new Promise(r=>setTimeout(r,1000));const rep=Object.entries(replies).find(([k])=>text.includes(k))?.[1]||"データを分析中です...\n\nFileMaker APIとの連携データを確認しました。9月のリード追客状況を見ると、アポ取得後の商談着座率が前月比+5%改善しています。具体的な改善アクションをご提案しましょうか？";setMsgs(m=>[...m,{r:"a",t:rep}]);setTyping(false);};
+  useEffect(()=>{if(box.current)box.current.scrollTop=box.current.scrollHeight;},[msgs,typing]);
+  return<div className="fade-in" style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",background:"#F5F7FA"}}>
+    <div style={{background:"#fff",borderBottom:"1px solid #E5E7EB",padding:"14px 24px",display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
+      <div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#0D9488,#10B981)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6" stroke="white" strokeWidth="1.5"/><path d="M5 7.5l2 2 3.5-3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+      <div><div style={{fontSize:14,fontWeight:700}}>AIエージェント</div><div style={{fontSize:11.5,color:"#9CA3AF"}}>広告・架電・MRRデータに基づくインテリジェント分析</div></div>
+      <span style={{marginLeft:"auto",fontSize:11,color:"#10B981",display:"flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:"50%",background:"#10B981",display:"inline-block",animation:"pulse 2s infinite"}}></span>FileMaker 接続中</span>
+    </div>
+    <div ref={box} style={{flex:1,overflow:"auto",padding:"20px 24px",display:"flex",flexDirection:"column",gap:10}}>
+      {msgs.map((m,i)=><div key={i} style={{display:"flex",justifyContent:m.r==="u"?"flex-end":"flex-start"}}>
+        <div className={`ai-msg ${m.r}`}>
+          {m.r==="a"&&<div style={{fontSize:10,color:"#0D9488",fontWeight:600,marginBottom:5,textTransform:"uppercase",letterSpacing:".06em"}}>GrowthHub AI</div>}
+          {m.t}
+        </div>
+      </div>)}
+      {typing&&<div style={{alignSelf:"flex-start"}}><div className="ai-msg a" style={{padding:"12px 16px"}}><div style={{display:"flex",gap:5}}>{[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:"#0D9488",animation:`pulse 1.2s ${i*.2}s infinite`}}></div>)}</div></div></div>}
+    </div>
+    <div style={{padding:"14px 24px",borderTop:"1px solid #E5E7EB",background:"#fff",flexShrink:0}}>
+      <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+        {["ROAS分析","アポ率改善","MRR改善","リード追客の最適化"].map(s=><button key={s} className="btn btn-ghost" style={{fontSize:11.5,padding:"4px 10px"}} onClick={()=>send(s)}>{s}</button>)}
+      </div>
+      <div style={{display:"flex",gap:10}}>
+        <textarea className="ai-input" rows={2} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} placeholder="メッセージを入力... (Enterで送信)"/>
+        <button className="btn btn-primary" style={{alignSelf:"flex-end",padding:"9px 16px"}} onClick={()=>send()}>送信</button>
+      </div>
+    </div>
+  </div>;
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────
+function DashboardView(){
+  const mData=MS.map((m,i)=>({m,spend:LIST_SUMMARY.広告費[i],leads:LIST_SUMMARY.リード[i],roas:LIST_SUMMARY.ROAS[i],revenue:LIST_SUMMARY.総受注額[i]||0}));
+  const kpis=[{l:"受注金額",v:"¥12,840,000",c:"+18.2%",up:true},{l:"総リード数",v:"273件",c:"+34%",up:true},{l:"広告費",v:"¥1,248,000",c:"+5.4%",up:false},{l:"ROAS",v:"4.82x",c:"+24.6%",up:true},{l:"MRR",v:"¥2,178,000",c:"+22%",up:true}];
+  return<div className="fade-in" style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",background:"#F5F7FA"}}>
+    <div style={{background:"#fff",borderBottom:"1px solid #E5E7EB",flexShrink:0}}>
+      <div style={{padding:"16px 24px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div><h1 style={{fontSize:17,fontWeight:700,letterSpacing:"-.4px",marginBottom:2}}>ダッシュボード</h1><p style={{fontSize:11.5,color:"#9CA3AF"}}>広告→リード→受注→MRR フルファネル概要</p></div>
+        <button className="btn btn-ghost" style={{fontSize:12}}>2026/04/01 – 2026/04/30</button>
+      </div>
+      <div style={{display:"flex",borderTop:"1px solid #E5E7EB"}}>
+        {kpis.map((k,i)=><div key={i} className="kpi">
+          <div className="kpi-label">{k.l}</div>
+          <div className="kpi-val">{k.v}</div>
+          <div style={{display:"flex",alignItems:"center",gap:7}}><span className="kpi-chg" style={{color:k.up?"#10B981":"#EF4444"}}>{k.c}</span><Spark pos={k.up}/></div>
+        </div>)}
+      </div>
+    </div>
+    <div style={{flex:1,overflow:"auto",padding:"16px 24px"}}>
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16,marginBottom:16}}>
+        <div className="card" style={{padding:"16px 20px"}}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:12}}>広告費 vs 売上 月次推移</div>
+          <BarLineChart data={mData} xKey="m" barKey="spend" lineKey="revenue" barLabel="広告費" lineLabel="売上"/>
+        </div>
+        <div className="card" style={{padding:"16px 20px"}}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:12}}>ROAS 推移</div>
+          <LineChart data={mData} xKey="m" yKey="roas" color="#10B981" fmt={v=>v.toFixed(0)+"%"}/>
+        </div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:0,background:"#fff",border:"1px solid #E5E7EB",borderRadius:10,overflow:"hidden",marginBottom:16}}>
+        {[{l:"広告クリック",v:"12,900",p:null},{l:"架電数",v:"273",p:"2.1%"},{l:"接続数",v:"157",p:"57.5%"},{l:"商談数",v:"61",p:"38.9%"},{l:"受注数",v:"38",p:"62.3%"},{l:"受注金額",v:"¥6,360,000",p:null}].map((s,i,arr)=><div key={i} style={{padding:"14px 12px",textAlign:"center",borderRight:i<arr.length-1?"1px solid #F1F5F9":"none"}}>
+          <div style={{fontSize:17,fontWeight:700,fontFamily:"DM Mono",letterSpacing:"-.4px"}}>{s.v}</div>
+          <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>{s.l}</div>
+          {s.p&&<div style={{fontSize:10.5,color:"#10B981",marginTop:4,fontFamily:"DM Mono",fontWeight:500}}>{s.p}</div>}
+        </div>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        <div className="card" style={{padding:"16px 20px"}}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>広告別 受注金額</div>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            {CAMPAIGNS_AD.filter(c=>c.revenue>0).map((c,i)=><tr key={i}><td style={{padding:"6px 0",fontSize:12.5,fontWeight:500}}>{c.name}</td><td style={{textAlign:"right",fontFamily:"DM Mono",fontWeight:600,color:"#0D9488"}}>{yen(c.revenue)}</td></tr>)}
+          </table>
+        </div>
+        <div className="card" style={{padding:"16px 20px"}}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>AIインサイト</div>
+          {[{icon:"⚡",t:"Google検索広告のROAS上昇中",b:"予算を20%増強で+¥600,000見込み"},{icon:"📉",t:"MetaリターゲティングのCPA悪化",b:"クリエイティブ改善を推奨"},{icon:"📞",t:"架電接続率の改善余地あり",b:"14-16時帯集中で+23%改善可能"}].map((it,i)=><div key={i} style={{display:"flex",gap:10,padding:"8px 0",borderBottom:i<2?"1px solid #F1F5F9":"none"}}>
+            <span style={{fontSize:16}}>{it.icon}</span>
+            <div><div style={{fontSize:12,fontWeight:600,marginBottom:2}}>{it.t}</div><div style={{fontSize:11.5,color:"#6B7280"}}>{it.b}</div></div>
+          </div>)}
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+// ─── SIDEBAR ─────────────────────────────────────────────
+function Sidebar({page,setPage}){
+  const nav=[
+    {id:"dashboard",l:"ダッシュボード",icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3"/><rect x="8" y="1" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3"/><rect x="1" y="8" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3"/><rect x="8" y="8" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3"/></svg>},
+    {id:"ads",l:"広告",icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 10L5 4l3 4 2-3 2 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>},
+    {id:"leads",l:"リード管理",icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="1" width="11" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M4 5h6M4 7.5h6M4 10h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,badge:273},
+    {id:"customercall",l:"顧客 & コール履歴",icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10l2.5 2.5-1.5 1.5A8 8 0 008 12.5l1.5-1.5L12 13.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>},
+    {id:"deals",l:"商談データ",icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M4 7.5l2 2 4-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>},
+    {id:"customers",l:"顧客データ",icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.3"/><path d="M1.5 12c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,sub:true},
+    {id:"reports",l:"集計",icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 10V8M7 10V4.5M11 10V6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><rect x="1" y="1" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3"/></svg>},
+    {div:true},
+    {id:"ai",l:"AIエージェント",icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3"/><path d="M5 7l1.5 1.5 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>,accent:true},
+    {id:"settings",l:"設定",icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.3"/><path d="M7 1.5v1M7 11.5v1M1.5 7h1M11.5 7h1M3.1 3.1l.7.7M10.2 10.2l.7.7M10.2 3.1l-.7.7M3.1 10.2l.7-.7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>},
+  ];
+  return<div style={{width:200,background:"#111827",borderRight:"1px solid #1F2937",display:"flex",flexDirection:"column",height:"100%",flexShrink:0}}>
+    <div style={{padding:"16px 14px 14px",borderBottom:"1px solid #1F2937"}}>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <div style={{width:24,height:24,borderRadius:6,background:"#0D9488",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1.5 9L6 2.5l2.5 4 1.5-2.5 1.5 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </div>
+        <span style={{fontSize:13,fontWeight:700,color:"#F9FAFB",letterSpacing:"-.2px"}}>GrowthHub</span>
+      </div>
+    </div>
+    <div style={{padding:"8px 8px",flex:1,overflow:"auto"}}>
+      {nav.map((item,i)=>item.div
+        ?<div key={i} className="nav-divider"/>
+        :<div key={item.id} className={`nav-item ${item.sub?"sub":""} ${page===item.id?"active":""}`} onClick={()=>setPage(item.id)} style={item.accent&&page!==item.id?{color:"#0D9488"}:{}}>
+          <span style={{flexShrink:0}}>{item.icon}</span>
+          <span style={{flex:1,fontSize:item.sub?12:12.5}}>{item.l}</span>
+          {item.badge&&<span className="badge">{item.badge>99?"99+":item.badge}</span>}
+        </div>
+      )}
+    </div>
+    <div style={{padding:"10px 14px",borderTop:"1px solid #1F2937"}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+        <div style={{width:6,height:6,borderRadius:"50%",background:"#10B981",animation:"pulse 2s infinite"}}></div>
+        <span style={{fontSize:10.5,color:"#374151"}}>FileMaker API 接続中</span>
+      </div>
+      <div style={{fontSize:9.5,color:"#1F2937",fontFamily:"DM Mono"}}>最終同期: 5分前</div>
+    </div>
+  </div>;
+}
+
+function TopHeader(){
+  return<div style={{height:46,background:"#fff",borderBottom:"1px solid #E5E7EB",display:"flex",alignItems:"center",padding:"0 20px 0 0",gap:12,flexShrink:0}}>
+    <div style={{flex:1,padding:"0 20px"}}>
+      <div style={{display:"flex",alignItems:"center",gap:7,background:"#F9FAFB",borderRadius:7,padding:"5px 11px",maxWidth:260,border:"1px solid #E5E7EB"}}>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="5" cy="5" r="3.5" stroke="#9CA3AF" strokeWidth="1.3"/><path d="M8 8l2 2" stroke="#9CA3AF" strokeWidth="1.3" strokeLinecap="round"/></svg>
+        <span style={{fontSize:12,color:"#9CA3AF"}}>検索...</span>
+        <span style={{marginLeft:"auto",fontSize:10,color:"#D1D5DB",fontFamily:"DM Mono"}}>⌘K</span>
+      </div>
+    </div>
+    <button style={{width:30,height:30,borderRadius:6,background:"none",border:"1px solid #E5E7EB",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#6B7280"}}>
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1C5 1 3 3 3 5c0 3-1.5 5-1.5 5h11S11 8 11 5c0-2-2-4-4-4z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+    </button>
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+      <div style={{width:28,height:28,borderRadius:"50%",background:"linear-gradient(135deg,#0D9488,#10B981)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,fontWeight:700}}>山</div>
+      <div><div style={{fontSize:12,fontWeight:600}}>山田 太郎</div><div style={{fontSize:10.5,color:"#9CA3AF"}}>株式会社サンプル</div></div>
+    </div>
+  </div>;
+}
+
+function App(){
+  const [page,setPage]=useState("dashboard");
+  const TWEAK_DEFAULTS=/*EDITMODE-BEGIN*/{"accentColor":"#0D9488"}/*EDITMODE-END*/;
+  const tr=typeof useTweaks==="function"?useTweaks(TWEAK_DEFAULTS):null;
+  const TweaksPanel=tr?.TweaksPanel??(({children})=>null);
+  const TweakColor=tr?.TweakColor??(()=>null);
+  const views={dashboard:<DashboardView/>,ads:<AdManagerView/>,leads:<LeadMgmtView/>,customercall:<CustomerCallView/>,deals:<DealsView/>,customers:<CustomerDataView/>,reports:<ReportsView/>,ai:<AIView/>};
+  return<div style={{display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden"}}>
+    <TopHeader/>
+    <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+      <Sidebar page={page} setPage={setPage}/>
+      <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+        {views[page]||<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",background:"#F5F7FA",color:"#9CA3AF"}}>Coming Soon</div>}
+      </div>
+    </div>
+    <TweaksPanel><TweakColor id="accentColor" label="アクセントカラー"/></TweaksPanel>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+name: Sync Meta Ads (Fallback)
+# Primary sync: vercel.json crons (runs automatically on Vercel)
+# This workflow is a fallback for manual triggers or non-Vercel environments
+
+on:
+  schedule:
+    # JST 11:00 (UTC 02:00) every day
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      tenant_id:
+        description: 'Tenant ID override (leave blank to use secret)'
+        required: false
+
+jobs:
+  sync-meta-ads:
+    name: Sync Meta Ad Data
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger ad-roi cron
+        run: |
+          TENANT="${{ github.event.inputs.tenant_id || secrets.TENANT_ID }}"
+          curl -f -X POST "${{ secrets.APP_URL }}/api/cron/ad-roi" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"tenantId\": \"${TENANT}\"}"
+
+  sync-fm:
+    name: Sync FileMaker Data
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger sync-fm cron
+        run: |
+          curl -f -X POST "${{ secrets.APP_URL }}/api/cron/sync-fm" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"

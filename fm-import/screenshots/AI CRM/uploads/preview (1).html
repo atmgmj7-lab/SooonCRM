@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>CRM + Ads Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+<div class="min-h-screen px-8 py-6">
+
+  <!-- Top KPI Banner -->
+  <section class="bg-white border border-slate-200 rounded-lg px-6 py-5 mb-6">
+    <div class="grid grid-cols-5 gap-8">
+      
+      <div>
+        <p class="text-xs text-slate-500 mb-2">売上実績</p>
+        <p class="text-3xl font-semibold tabular-nums">¥12.8M</p>
+      </div>
+
+      <div>
+        <p class="text-xs text-slate-500 mb-2">商談数</p>
+        <p class="text-3xl font-semibold tabular-nums">38</p>
+      </div>
+
+      <div>
+        <p class="text-xs text-slate-500 mb-2">広告費</p>
+        <p class="text-3xl font-semibold tabular-nums">¥1.2M</p>
+      </div>
+
+      <div>
+        <p class="text-xs text-slate-500 mb-2">ROAS</p>
+        <p class="text-3xl font-semibold text-indigo-600 tabular-nums">4.8x</p>
+      </div>
+
+      <div>
+        <p class="text-xs text-slate-500 mb-2">CPA</p>
+        <p class="text-3xl font-semibold tabular-nums">¥8,200</p>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="grid grid-cols-12 gap-6">
+
+    <!-- Ads Manager -->
+    <section class="col-span-7 bg-white border border-slate-200 rounded-lg p-6">
+      <div class="flex justify-between mb-4">
+        <h2 class="font-semibold">広告マネージャー</h2>
+        <button class="text-sm text-slate-500">全キャンペーン</button>
+      </div>
+
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-slate-500 border-b border-slate-200">
+            <th class="text-left py-3">Channel</th>
+            <th class="text-left">Campaign</th>
+            <th class="text-right">Spend</th>
+            <th class="text-right">CTR</th>
+            <th class="text-right">CVR</th>
+            <th class="text-right">CPA</th>
+          </tr>
+        </thead>
+
+        <tbody class="tabular-nums">
+          <tr class="border-b border-slate-100">
+            <td class="py-4">Meta</td>
+            <td>Lead Gen April</td>
+            <td class="text-right">¥420,000</td>
+            <td class="text-right">2.4%</td>
+            <td class="text-right">5.1%</td>
+            <td class="text-right">¥7,800</td>
+          </tr>
+
+          <tr class="border-b border-slate-100 bg-amber-50">
+            <td class="py-4">Google</td>
+            <td>Search High Intent</td>
+            <td class="text-right">¥510,000</td>
+            <td class="text-right">3.2%</td>
+            <td class="text-right">4.2%</td>
+            <td class="text-right text-amber-700">¥11,200</td>
+          </tr>
+
+          <tr>
+            <td class="py-4">Meta</td>
+            <td>Retargeting</td>
+            <td class="text-right">¥280,000</td>
+            <td class="text-right">4.1%</td>
+            <td class="text-right">7.0%</td>
+            <td class="text-right">¥5,900</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- CRM Pipeline -->
+    <section class="col-span-3 bg-white border border-slate-200 rounded-lg p-6">
+      <h2 class="font-semibold mb-5">商談パイプライン</h2>
+
+      <div class="space-y-4">
+
+        <div class="border border-slate-100 rounded-md p-4">
+          <p class="text-xs text-slate-500">新規リード</p>
+          <p class="text-lg font-semibold">12件</p>
+          <p class="text-sm text-slate-500">¥2.1M</p>
+        </div>
+
+        <div class="border border-slate-100 rounded-md p-4">
+          <p class="text-xs text-slate-500">提案中</p>
+          <p class="text-lg font-semibold">8件</p>
+          <p class="text-sm text-slate-500">¥4.6M</p>
+        </div>
+
+        <div class="border border-slate-100 rounded-md p-4">
+          <p class="text-xs text-slate-500">成約目前</p>
+          <p class="text-lg font-semibold text-emerald-600">3件</p>
+          <p class="text-sm text-slate-500">¥6.1M</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- AI Insight Feed -->
+    <aside class="col-span-2 bg-white border border-slate-200 rounded-lg p-6">
+      <h2 class="font-semibold mb-4">AI Insights</h2>
+
+      <div class="space-y-4 text-sm">
+        <div class="p-4 bg-slate-50 rounded-md">
+          Google広告のCPAが
+          <span class="font-semibold">18%改善</span>。
+          Metaから
+          <span class="font-semibold">20%予算移行</span>
+          を推奨。
+        </div>
+
+        <div class="p-4 bg-slate-50 rounded-md">
+          高CVRキーワード：
+          「CRM 導入」
+        </div>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+</body>
+</html>
