@@ -50,16 +50,14 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    label: 'コール',
+    label: 'コール履歴',
     icon: <Phone size={15} />,
     href: '/calls',
   },
   {
     label: 'リスト情報',
     icon: <Users size={15} />,
-    children: [
-      { label: '顧客一覧', href: '/customers' },
-    ],
+    href: '/list',
   },
   {
     label: '商談情報',

@@ -52,6 +52,7 @@ export async function matchOrCreateListRecord(webhookLeadId: string) {
       .from('webhook_leads')
       .update({
         status: 'added',
+        match_status: 'matched',
         added_to_list_id: existing.id,
         added_at: new Date().toISOString(),
       })
@@ -102,6 +103,7 @@ export async function promoteWebhookLead(webhookLeadId: string, addedBy: string)
     .from('webhook_leads')
     .update({
       status: 'added',
+      match_status: 'matched',
       added_to_list_id: newRecord.id,
       added_at: new Date().toISOString(),
       added_by: addedBy,

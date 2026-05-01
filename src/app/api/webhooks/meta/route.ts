@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { normalizePhone } from '@/lib/leads/phone-match'
 
 // GET: Meta webhook verification
 export async function GET(request: Request) {
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
   const supabase = createAdminClient()
 
   const entries = (body?.entry as Record<string, unknown>[]) ?? []
-  const inserts: Record<string, unknown>[] = []
+  let saved = 0
 
   for (const entry of entries) {
     const changes = (entry?.changes as Record<string, unknown>[]) ?? []
@@ -66,26 +67,64 @@ export async function POST(request: Request) {
         const value = (change.value ?? {}) as Record<string, unknown>
         const leadId = (value.leadgen_id as string) ?? ''
         const mappedData = await fetchLeadDetail(leadId)
+        const rawPhone = value.phone_number ?? value['電話番号'] ?? value.phone ?? mappedData.phone_number ?? ''
+        const phoneNormalized = normalizePhone(String(rawPhone))
 
-        inserts.push({
-          tenant_id: tenantId,
-          raw_data: value,
-          mapped_data: mappedData,
-          source: 'meta_ads',
-          status: 'pending',
-          ad_name: (value.ad_name as string) ?? mappedData.ad_name ?? null,
-        })
+        const { data: matched } = phoneNormalized
+          ? await supabase
+              .from('list_records')
+              .select('id, customer_id, fm_record_id')
+              .eq('tenant_id', tenantId)
+              .contains('phone_numbers', JSON.stringify([phoneNormalized]))
+              .limit(1)
+              .maybeSingle()
+          : { data: null }
+
+        const matchStatus = phoneNormalized ? (matched ? 'matched' : 'unmatched') : 'pending'
+
+        const { data: insertedLead, error: insertError } = await supabase
+          .from('webhook_leads')
+          .insert({
+            tenant_id: tenantId,
+            raw_data: value,
+            mapped_data: mappedData,
+            source: 'meta_ads',
+            ad_name: (value.ad_name as string) ?? mappedData.ad_name ?? null,
+            phone_normalized: phoneNormalized || null,
+            match_status: matchStatus,
+            ...(matched
+              ? {
+                  status: 'added',
+                  added_to_list_id: matched.id,
+                  added_at: new Date().toISOString(),
+                }
+              : {
+                  status: 'pending',
+                }),
+          })
+          .select('id')
+          .single()
+
+        if (insertError) {
+          console.error('[meta-webhook] insert error:', insertError)
+          return NextResponse.json({ error: insertError.message }, { status: 500 })
+        }
+
+        if (matched && insertedLead) {
+          const { error: listUpdateError } = await supabase
+            .from('list_records')
+            .update({ webhook_lead_id: insertedLead.id, updated_at: new Date().toISOString() })
+            .eq('id', matched.id)
+
+          if (listUpdateError) {
+            console.error('[meta-webhook] list_records update error:', listUpdateError)
+          }
+        }
+
+        saved += 1
       }
     }
   }
 
-  if (inserts.length > 0) {
-    const { error } = await supabase.from('webhook_leads').insert(inserts)
-    if (error) {
-      console.error('[meta-webhook] insert error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-  }
-
-  return NextResponse.json({ received: true, saved: inserts.length })
+  return NextResponse.json({ received: true, saved })
 }
