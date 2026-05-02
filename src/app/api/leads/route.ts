@@ -32,6 +32,7 @@ export async function GET(request: Request) {
     .from('leads')
     .select('*', { count: 'exact' })
     .eq('tenant_id', member.tenant_id)
+    .or('phone_number.not.is.null,company_name.not.is.null,representative_name.not.is.null,ad_name.not.is.null')
     .order('inquiry_date', { ascending: false })
     .order('created_at', { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
