@@ -1,174 +1,80 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { PlusCircle, ListPlus, RefreshCw } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Search } from 'lucide-react'
 
-type WebhookLead = {
+type Lead = {
   id: string
-  tenant_id: string
+  inquiry_date: string | null
   ad_name: string | null
-  status: 'pending' | 'added'
-  match_status?: 'matched' | 'unmatched' | 'pending' | null
-  fm_record_id?: string | null
-  added_to_list_id?: string | null
-  received_at: string
-  created_at: string
-  raw_data: Record<string, unknown>
-  mapped_data: Record<string, unknown>
+  company_name: string | null
+  representative_name: string | null
+  phone_number: string | null
+  last_call_result: string | null
+  list_record_id: string | null
+  prefecture: string | null
 }
 
-type MatchFilter = 'all' | 'fm_synced' | 'linked' | 'unmatched' | 'pending'
+const RESULT_OPTIONS = ['', 'アポOK', 'NG', '留守', '対象外', '再コール', '思案中', 'ポータルサイト']
 
 const thBase = 'px-3 py-2.5 text-left text-[12px] font-medium whitespace-nowrap'
 const tdBase = 'px-3 py-2 text-[12px] whitespace-nowrap align-middle'
 
-export default function LeadsPage() {
-  const [leads, setLeads] = useState<WebhookLead[]>([])
-  const [loading, setLoading] = useState(true)
-  const [addingId, setAddingId] = useState<string | null>(null)
-  const [bulkAdding, setBulkAdding] = useState(false)
-  const [rematching, setRematching] = useState(false)
-  const [matchFilter, setMatchFilter] = useState<MatchFilter>('all')
-  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null)
+function ResultBadge({ result }: { result: string | null }) {
+  if (!result) return <span style={{ color: 'var(--color-gray-400)' }}>—</span>
+  const isAppo = result === 'アポOK'
+  return (
+    <span
+      className="inline-block px-2 py-0.5 rounded text-[11px] font-medium"
+      style={{
+        background: isAppo ? 'var(--color-success-bg)' : 'var(--color-gray-100)',
+        color: isAppo ? 'var(--color-success)' : 'var(--color-gray-600)',
+      }}
+    >
+      {result}
+    </span>
+  )
+}
 
-  const loadLeads = useCallback(async () => {
+export default function LeadsPage() {
+  const [leads, setLeads] = useState<Lead[]>([])
+  const [loading, setLoading] = useState(true)
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+  const [q, setQ] = useState('')
+  const [result, setResult] = useState('')
+
+  const buildUrl = useCallback((q: string, result: string, p: number) => {
+    const params = new URLSearchParams({ page: String(p) })
+    if (q) params.set('q', q)
+    if (result) params.set('result', result)
+    return `/api/leads?${params}`
+  }, [])
+
+  const load = useCallback(async (q: string, result: string) => {
     setLoading(true)
     try {
-      const res = await fetch('/api/webhook-leads', { cache: 'no-store' })
-      const json = await res.json() as { leads: WebhookLead[] }
+      const res = await fetch(buildUrl(q, result, 1), { cache: 'no-store' })
+      const json = await res.json() as { leads: Lead[]; total: number; hasMore: boolean }
       setLeads(json.leads ?? [])
+      setTotal(json.total ?? 0)
+      setHasMore(json.hasMore ?? false)
+      setPage(1)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [buildUrl])
 
-  useEffect(() => {
-    loadLeads()
+  useEffect(() => { load(q, result) }, [q, result, load])
 
-    const supabase = createClient()
-    const channel = supabase
-      .channel('webhook_leads_changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'webhook_leads' },
-        () => { loadLeads() }
-      )
-      .subscribe()
-
-    channelRef.current = channel
-    return () => { supabase.removeChannel(channel) }
-  }, [loadLeads])
-
-  async function handleAddToList(id: string) {
-    setAddingId(id)
-    try {
-      const res = await fetch('/api/webhook-leads/add-to-list', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      })
-      if (res.ok) {
-        setLeads((prev) =>
-          prev.map((l) => l.id === id ? { ...l, status: 'added' } : l)
-        )
-      }
-    } finally {
-      setAddingId(null)
-    }
-  }
-
-  async function handleBulkAdd() {
-    setBulkAdding(true)
-    try {
-      const res = await fetch('/api/webhook-leads/add-to-list', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bulk: true }),
-      })
-      if (res.ok) {
-        await loadLeads()
-      }
-    } finally {
-      setBulkAdding(false)
-    }
-  }
-
-  async function handleRematch() {
-    setRematching(true)
-    try {
-      const res = await fetch('/api/leads/rematch', { method: 'POST' })
-      if (res.ok) {
-        await loadLeads()
-      }
-    } finally {
-      setRematching(false)
-    }
-  }
-
-  const pendingCount = leads.filter((l) => l.status === 'pending').length
-  const unmatchedCount = leads.filter((l) => l.match_status === 'unmatched').length
-
-  const filteredLeads = leads.filter((lead) => {
-    switch (matchFilter) {
-      case 'fm_synced':
-        return !!lead.fm_record_id
-      case 'linked':
-        return !!lead.added_to_list_id && !lead.fm_record_id
-      case 'unmatched':
-        return lead.match_status === 'unmatched'
-      case 'pending':
-        return lead.match_status === 'pending'
-      case 'all':
-      default:
-        return true
-    }
-  })
-
-  function formatDateTime(dt: string): string {
-    if (!dt) return '—'
-    return dt.slice(0, 16).replace('T', ' ')
-  }
-
-  function str(v: unknown): string {
-    return typeof v === 'string' && v ? v : ''
-  }
-
-  function pick(...candidates: unknown[]): string {
-    for (const c of candidates) {
-      const s = str(c)
-      if (s) return s
-    }
-    return '—'
-  }
-
-  function renderMatchBadge(lead: WebhookLead) {
-    if (lead.fm_record_id) {
-      return (
-        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium" style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)' }}>
-          FM同期済
-        </span>
-      )
-    }
-    if (lead.added_to_list_id) {
-      return (
-        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium" style={{ background: 'var(--color-blue-light)', color: 'var(--color-blue)' }}>
-          リスト紐づき済
-        </span>
-      )
-    }
-    if (lead.match_status === 'unmatched') {
-      return (
-        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium" style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning)' }}>
-          未紐づけ
-        </span>
-      )
-    }
-    return (
-      <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium" style={{ background: 'var(--color-gray-100)', color: 'var(--color-gray-600)' }}>
-        照合待ち
-      </span>
-    )
+  async function loadMore() {
+    const next = page + 1
+    const res = await fetch(buildUrl(q, result, next), { cache: 'no-store' })
+    const json = await res.json() as { leads: Lead[]; hasMore: boolean }
+    setLeads((prev) => [...prev, ...(json.leads ?? [])])
+    setHasMore(json.hasMore ?? false)
+    setPage(next)
   }
 
   return (
@@ -176,167 +82,129 @@ export default function LeadsPage() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-[22px] font-bold" style={{ color: 'var(--color-gray-900)' }}>
-            Webhook リード受信
+            リード一覧
           </h1>
-          <p className="text-[12px] mt-0.5" style={{ color: 'var(--color-gray-400)' }}>
-            Meta広告フォームから受信したリード
+          <p className="text-[12px] mt-0.5 tabular-nums" style={{ color: 'var(--color-gray-400)' }}>
+            {total.toLocaleString()} 件
           </p>
         </div>
-        {pendingCount > 0 && (
-          <div className="flex items-center gap-2">
-            {unmatchedCount > 0 && (
-              <button
-                type="button"
-                onClick={handleRematch}
-                disabled={rematching}
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-medium text-white disabled:opacity-60"
-                style={{ background: 'var(--color-navy-mid)' }}
-              >
-                <RefreshCw size={14} className={rematching ? 'animate-spin' : ''} />
-                {rematching ? '再照合中…' : `未紐づけを再照合（${unmatchedCount}件）`}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handleBulkAdd}
-              disabled={bulkAdding}
-              className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-medium text-white disabled:opacity-60"
-              style={{ background: 'var(--color-blue)' }}
-            >
-              <ListPlus size={14} />
-              {bulkAdding ? '追加中…' : `全件追加（${pendingCount}件）`}
-            </button>
-          </div>
-        )}
       </div>
 
-      <div className="mb-4 flex items-center gap-2">
-        <span className="text-[12px]" style={{ color: 'var(--color-gray-600)' }}>FM紐づけ状態</span>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="relative">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-gray-400)' }} />
+          <input
+            type="text"
+            placeholder="会社名・代表名・電話番号で検索"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="rounded-lg border pl-8 pr-3 py-1.5 text-[13px]"
+            style={{ borderColor: 'var(--color-gray-200)', background: 'var(--color-white)', color: 'var(--color-gray-900)', width: 240 }}
+          />
+        </div>
         <select
-          value={matchFilter}
-          onChange={(e) => setMatchFilter(e.target.value as MatchFilter)}
+          value={result}
+          onChange={(e) => setResult(e.target.value)}
           className="rounded-lg border px-3 py-1.5 text-[13px]"
           style={{ borderColor: 'var(--color-gray-200)', background: 'var(--color-white)', color: 'var(--color-gray-900)' }}
         >
-          <option value="all">すべて</option>
-          <option value="fm_synced">FM同期済</option>
-          <option value="linked">リスト紐づき済</option>
-          <option value="unmatched">未紐づけ</option>
-          <option value="pending">照合待ち</option>
+          <option value="">対応結果（全て）</option>
+          {RESULT_OPTIONS.filter(Boolean).map((o) => (
+            <option key={o} value={o}>{o}</option>
+          ))}
         </select>
       </div>
 
       <div className="rounded-xl border overflow-hidden overflow-x-auto" style={{ borderColor: 'var(--color-gray-200)', background: 'var(--color-white)' }}>
-        <table className="text-[12px] border-collapse w-full" style={{ minWidth: 1200 }}>
+        <table className="text-[12px] border-collapse w-full" style={{ minWidth: 900 }}>
           <thead>
             <tr style={{ background: 'var(--color-gray-50)', borderBottom: '1px solid var(--color-gray-200)' }}>
-              <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 130 }}>受信日時</th>
+              <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 96 }}>問い合わせ日</th>
               <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 160 }}>広告名</th>
               <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 140 }}>会社名</th>
               <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 100 }}>代表名</th>
+              <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 80 }}>都道府県</th>
               <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 120 }}>電話番号</th>
-              <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 90 }}>都道府県</th>
-              <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 120 }}>FM紐づけ状態</th>
-              <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 180 }}>リスト情報</th>
-              <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 80 }}>ステータス</th>
-              <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 100 }}>操作</th>
+              <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 110 }}>対応結果</th>
+              <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 100 }}>FM紐づけ</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={10} className="py-12 text-center text-[13px] animate-pulse" style={{ color: 'var(--color-gray-400)' }}>
+                <td colSpan={8} className="py-12 text-center text-[13px] animate-pulse" style={{ color: 'var(--color-gray-400)' }}>
                   読み込み中…
                 </td>
               </tr>
             )}
-            {!loading && filteredLeads.length === 0 && (
+            {!loading && leads.length === 0 && (
               <tr>
-                <td colSpan={10} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
-                  受信済みのリードはありません
+                <td colSpan={8} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
+                  データがありません
                 </td>
               </tr>
             )}
-            {!loading && filteredLeads.map((lead) => {
-              const isAdded = lead.status === 'added'
-              const isAdding = addingId === lead.id
-              const raw = lead.raw_data ?? {}
-              const mapped = lead.mapped_data ?? {}
-
-              return (
-                <tr
-                  key={lead.id}
-                  style={{
-                    borderBottom: '1px solid var(--color-gray-200)',
-                    opacity: isAdded ? 0.5 : 1,
-                  }}
-                >
-                  <td className={`${tdBase} tabular-nums`} style={{ color: 'var(--color-gray-600)' }}>
-                    {formatDateTime(lead.received_at)}
-                  </td>
-                  <td className={tdBase} style={{ color: 'var(--color-gray-700)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {pick(lead.ad_name, mapped.ad_name, raw.ad_name)}
-                  </td>
-                  <td className={tdBase} style={{ color: 'var(--color-gray-900)', fontWeight: 500, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {pick(mapped.company_name, raw.company_name)}
-                  </td>
-                  <td className={tdBase} style={{ color: 'var(--color-gray-700)' }}>
-                    {pick(mapped.representative_name, raw.representative_name)}
-                  </td>
-                  <td className={`${tdBase} tabular-nums`} style={{ color: 'var(--color-gray-600)' }}>
-                    {pick(
-                      Array.isArray(mapped.phone_numbers) ? mapped.phone_numbers[0] : mapped.phone_numbers,
-                      mapped.phone_number,
-                      mapped.telephone,
-                      raw.phone_number,
-                      raw.phone,
-                      raw['電話番号'],
-                    )}
-                  </td>
-                  <td className={tdBase} style={{ color: 'var(--color-gray-600)' }}>
-                    {pick(mapped.prefecture, mapped.県名, raw.prefecture, raw.県名)}
-                  </td>
-                  <td className={tdBase}>
-                    {renderMatchBadge(lead)}
-                  </td>
-                  <td className={tdBase} style={{ color: 'var(--color-gray-700)' }}>
-                    {lead.added_to_list_id ? (
-                      <a href={`/list/${lead.added_to_list_id}`} className="underline">
-                        {`${pick(raw.customer_id, mapped.customer_id, 'CS未設定')} / ${pick(mapped.company_name, raw.company_name)}`}
-                      </a>
-                    ) : '—'}
-                  </td>
-                  <td className={tdBase}>
-                    <span
+            {!loading && leads.map((lead) => (
+              <tr
+                key={lead.id}
+                style={{ borderBottom: '1px solid var(--color-gray-200)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-gray-50)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                <td className={`${tdBase} tabular-nums`} style={{ color: 'var(--color-gray-600)' }}>
+                  {lead.inquiry_date ?? '—'}
+                </td>
+                <td className={tdBase} style={{ color: 'var(--color-gray-700)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {lead.ad_name ?? '—'}
+                </td>
+                <td className={tdBase} style={{ color: 'var(--color-gray-900)', fontWeight: 500, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {lead.company_name ?? '—'}
+                </td>
+                <td className={tdBase} style={{ color: 'var(--color-gray-700)' }}>
+                  {lead.representative_name ?? '—'}
+                </td>
+                <td className={tdBase} style={{ color: 'var(--color-gray-600)' }}>
+                  {lead.prefecture ?? '—'}
+                </td>
+                <td className={`${tdBase} tabular-nums`} style={{ color: 'var(--color-gray-600)' }}>
+                  {lead.phone_number ?? '—'}
+                </td>
+                <td className={tdBase}>
+                  <ResultBadge result={lead.last_call_result} />
+                </td>
+                <td className={tdBase}>
+                  {lead.list_record_id ? (
+                    <a
+                      href={`/list/${lead.list_record_id}`}
                       className="inline-block px-2 py-0.5 rounded text-[11px] font-medium"
-                      style={{
-                        background: isAdded ? 'var(--color-gray-100)' : 'var(--color-warning-bg)',
-                        color: isAdded ? 'var(--color-gray-400)' : 'var(--color-warning)',
-                      }}
+                      style={{ background: 'var(--color-blue-light)', color: 'var(--color-blue)' }}
                     >
-                      {isAdded ? '追加済み' : '未追加'}
+                      リスト紐づき済
+                    </a>
+                  ) : (
+                    <span className="inline-block px-2 py-0.5 rounded text-[11px]" style={{ background: 'var(--color-gray-100)', color: 'var(--color-gray-400)' }}>
+                      未紐づけ
                     </span>
-                  </td>
-                  <td className={tdBase}>
-                    {!isAdded && (
-                      <button
-                        type="button"
-                        onClick={() => handleAddToList(lead.id)}
-                        disabled={isAdding}
-                        className="flex items-center gap-1 rounded border px-2 py-1 text-[11px] font-medium disabled:opacity-60"
-                        style={{ borderColor: 'var(--color-blue)', color: 'var(--color-blue)', background: 'transparent' }}
-                      >
-                        <PlusCircle size={11} />
-                        {isAdding ? '追加中…' : 'リストに追加'}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
+
+      {hasMore && (
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={loadMore}
+            className="rounded-lg px-6 py-2 text-[13px] font-medium border"
+            style={{ borderColor: 'var(--color-gray-200)', background: 'var(--color-white)', color: 'var(--color-gray-700)' }}
+          >
+            さらに読み込む
+          </button>
+        </div>
+      )}
     </div>
   )
 }

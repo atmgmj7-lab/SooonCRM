@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 type ListRecord = {
   id: string
   tenant_id: string
+  customer_id: string | null
   ad_name: string | null
   company_name: string | null
   title: string | null
@@ -19,6 +20,9 @@ type ListRecord = {
   status: string | null
   custom_data: Record<string, unknown> | null
   created_at: string
+  inquiry_count: number | null
+  last_inquiry_at: string | null
+  last_inquiry_ad_name: string | null
 }
 
 const LAST_CALL_RESULT_OPTIONS = ['', 'アポOK', 'NG', '留守', '対象外', '再コール', '思案中', 'ポータルサイト']
@@ -177,6 +181,8 @@ export default function ListPage() {
               <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 120 }}>電話番号</th>
               <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 100 }}>最終架電結果</th>
               <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 60 }}>コール数</th>
+              <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 60 }}>問い合わせ数</th>
+              <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 96 }}>最終問い合わせ日</th>
               <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 80 }}>完了進捗</th>
               <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 120 }}>ステータス</th>
             </tr>
@@ -184,14 +190,14 @@ export default function ListPage() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={11} className="py-12 text-center text-[13px] animate-pulse" style={{ color: 'var(--color-gray-400)' }}>
+                <td colSpan={13} className="py-12 text-center text-[13px] animate-pulse" style={{ color: 'var(--color-gray-400)' }}>
                   読み込み中…
                 </td>
               </tr>
             )}
             {!loading && records.length === 0 && (
               <tr>
-                <td colSpan={11} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
+                <td colSpan={13} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
                   データがありません
                 </td>
               </tr>
@@ -241,6 +247,12 @@ export default function ListPage() {
                 </td>
                 <td className={`${tdBase} tabular-nums text-right`} style={{ color: 'var(--color-gray-600)' }}>
                   {rec.last_call_count ?? '—'}
+                </td>
+                <td className={`${tdBase} tabular-nums text-right`} style={{ color: rec.inquiry_count ? 'var(--color-blue)' : 'var(--color-gray-400)' }}>
+                  {rec.inquiry_count ?? 0}
+                </td>
+                <td className={`${tdBase} tabular-nums`} style={{ color: 'var(--color-gray-600)' }}>
+                  {rec.last_inquiry_at ? rec.last_inquiry_at.slice(0, 10) : '—'}
                 </td>
                 <td className={tdBase} style={{ color: 'var(--color-gray-600)' }}>
                   {(rec.custom_data?.completion_progress as string) ?? '—'}

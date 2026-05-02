@@ -45,19 +45,14 @@ const navItems: NavItem[] = [
     label: 'リード',
     icon: <ListChecks size={15} />,
     children: [
-      { label: 'Webhook受信', href: '/leads' },
-      { label: 'リスト一覧', href: '/list' },
+      { label: 'リード一覧', href: '/leads' },
+      { label: 'リスト情報', href: '/list' },
     ],
   },
   {
     label: 'コール履歴',
     icon: <Phone size={15} />,
     href: '/calls',
-  },
-  {
-    label: 'リスト情報',
-    icon: <Users size={15} />,
-    href: '/list',
   },
   {
     label: '商談情報',
