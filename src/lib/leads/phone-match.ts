@@ -1,12 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { normalizePhoneNumber } from '@/lib/utils/phone'
 
 const TENANT_ID = 'dde9bea6-a017-49e6-a1b6-88494e1e3b4d'
 
-// 電話番号を正規化（数字のみ・先頭の81/+81を0に変換）
 export function normalizePhone(phone: string): string {
-  let normalized = phone.replace(/\D/g, '')
-  if (normalized.startsWith('81')) normalized = '0' + normalized.slice(2)
-  return normalized
+  return normalizePhoneNumber(phone) ?? ''
 }
 
 // webhook_leadのphone_numberでlist_recordsを照合

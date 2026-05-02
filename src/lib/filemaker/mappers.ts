@@ -1,5 +1,6 @@
 // FMフィールド名 → Supabaseカラム名 マッピング
 // FM Data API から取得した実際のフィールド名を使用（2026-05-02 全フィールド確認済み）
+import { parseAndNormalizePhones } from '@/lib/utils/phone'
 
 // ---- リスト情報 → list_records ----
 export function mapFMListToSupabase(fmFields: Record<string, unknown>) {
@@ -82,8 +83,7 @@ function parseDateTimeJP(val?: string): string | null {
 }
 
 function parsePhones(val?: string): string[] {
-  if (!val) return []
-  return val.split(/[,\n、]/).map(s => s.trim()).filter(Boolean)
+  return parseAndNormalizePhones(val)
 }
 
 function parseArray(val?: string): string[] {

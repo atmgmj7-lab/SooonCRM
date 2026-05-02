@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { normalizePhone } from '@/lib/leads/phone-match'
+import { normalizePhoneNumber } from '@/lib/utils/phone'
 
 // GET: Meta webhook verification
 export async function GET(request: Request) {
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
         const leadId = (value.leadgen_id as string) ?? ''
         const mappedData = await fetchLeadDetail(leadId)
         const rawPhone = value.phone_number ?? value['電話番号'] ?? value.phone ?? mappedData.phone_number ?? ''
-        const phoneNormalized = normalizePhone(String(rawPhone))
+        const phoneNormalized = normalizePhoneNumber(String(rawPhone))
 
         const { data: matched } = phoneNormalized
           ? await supabase
