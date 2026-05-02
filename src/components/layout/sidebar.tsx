@@ -42,17 +42,13 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    label: 'リード',
+    label: 'リスト',
     icon: <ListChecks size={15} />,
     children: [
       { label: 'リード一覧', href: '/leads' },
       { label: 'リスト情報', href: '/list' },
+      { label: 'コール履歴', href: '/calls' },
     ],
-  },
-  {
-    label: 'コール履歴',
-    icon: <Phone size={15} />,
-    href: '/calls',
   },
   {
     label: '商談情報',

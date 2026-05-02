@@ -137,16 +137,16 @@ export default function LeadsPage() {
                 </td>
               </tr>
             )}
-            {!loading && leads.length === 0 && (
+            {!loading && leads.filter(l => l.phone_number || l.company_name || l.representative_name || l.ad_name).length === 0 && (
               <tr>
                 <td colSpan={8} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
                   データがありません
                 </td>
               </tr>
             )}
-            {!loading && leads.map((lead) => (
+            {!loading && leads.filter(l => l.phone_number || l.company_name || l.representative_name || l.ad_name).map((lead, index) => (
               <tr
-                key={lead.id}
+                key={`${lead.id}-${index}`}
                 style={{ borderBottom: '1px solid var(--color-gray-200)' }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-gray-50)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
