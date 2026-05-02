@@ -1,10 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Search } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Search, Link2 } from 'lucide-react'
 
 type Lead = {
   id: string
+  list_record_id: string | null
   inquiry_date: string | null
   ad_name: string | null
   company_name: string | null
@@ -22,38 +24,37 @@ type Lead = {
   jitsuyo_ok: boolean | null
   ichiyou_ng: boolean | null
   order_closed: boolean | null
-  list_record_id: string | null
 }
 
 const RESULT_OPTIONS = ['', 'アポOK', 'NG', '留守', '対象外', '再コール', '思案中', 'ポータルサイト']
 
-// 各列の幅定義
 const COL_WIDTHS = {
-  inquiry_date:        88,
-  ad_name:            150,
-  company_name:       130,
-  rep_title:           72,
-  representative_name: 96,
-  email_address:      140,
-  phone_number:       112,
-  prefecture:          68,
-  last_call_result:    84,
-  completion_progress: 68,
-  call_count:          52,
-  recall_date:         84,
-  recall_time:         60,
-  adjusting:           60,
-  jitsuyo_ok:          68,
-  ichiyou_ng:          60,
-  order_closed:        52,
+  list_record_id:       64,
+  inquiry_date:         88,
+  ad_name:             150,
+  company_name:        130,
+  rep_title:            72,
+  representative_name:  96,
+  email_address:       140,
+  phone_number:        112,
+  prefecture:           68,
+  last_call_result:     84,
+  completion_progress:  68,
+  call_count:           52,
+  recall_date:          84,
+  recall_time:          60,
+  adjusting:            60,
+  jitsuyo_ok:           68,
+  ichiyou_ng:           60,
+  order_closed:         52,
 }
 
 const TOTAL_WIDTH = Object.values(COL_WIDTHS).reduce((a, b) => a + b, 0)
 
-function Th({ label, w }: { label: string; w: number }) {
+function Th({ label, w, center }: { label: string; w: number; center?: boolean }) {
   return (
     <th
-      className="px-2 py-2.5 text-left text-[11px] font-medium whitespace-nowrap overflow-hidden text-ellipsis"
+      className={`px-2 py-2.5 text-[11px] font-medium whitespace-nowrap overflow-hidden text-ellipsis${center ? ' text-center' : ' text-left'}`}
       style={{ color: 'var(--color-gray-600)', width: w, minWidth: w, maxWidth: w }}
     >
       {label}
@@ -71,6 +72,21 @@ function Td({ value, w, center }: { value: React.ReactNode; w: number; center?: 
     >
       {value ?? '—'}
     </td>
+  )
+}
+
+function ListLinkBadge({ listRecordId, onNavigate }: { listRecordId: string | null; onNavigate: () => void }) {
+  if (!listRecordId) return <span style={{ color: 'var(--color-gray-200)' }}>—</span>
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onNavigate() }}
+      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium cursor-pointer"
+      style={{ background: 'var(--color-blue-light)', color: 'var(--color-blue)' }}
+    >
+      <Link2 size={9} />
+      追加済
+    </button>
   )
 }
 
@@ -103,6 +119,7 @@ function BoolBadge({ value, label, color }: { value: boolean | null; label: stri
 }
 
 export default function LeadsPage() {
+  const router = useRouter()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
@@ -193,6 +210,7 @@ export default function LeadsPage() {
         >
           <thead>
             <tr style={{ background: 'var(--color-gray-50)', borderBottom: '1px solid var(--color-gray-200)' }}>
+              <Th label="リスト"         w={w.list_record_id} center />
               <Th label="問い合わせ日"   w={w.inquiry_date} />
               <Th label="広告名"         w={w.ad_name} />
               <Th label="会社名"         w={w.company_name} />
@@ -206,23 +224,23 @@ export default function LeadsPage() {
               <Th label="コール数"       w={w.call_count} />
               <Th label="再コール日"     w={w.recall_date} />
               <Th label="再時間"         w={w.recall_time} />
-              <Th label="調整中"         w={w.adjusting} />
-              <Th label="採用OK"         w={w.jitsuyo_ok} />
-              <Th label="採用NG"         w={w.ichiyou_ng} />
-              <Th label="受注"           w={w.order_closed} />
+              <Th label="調整中"         w={w.adjusting} center />
+              <Th label="採用OK"         w={w.jitsuyo_ok} center />
+              <Th label="採用NG"         w={w.ichiyou_ng} center />
+              <Th label="受注"           w={w.order_closed} center />
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={17} className="py-12 text-center text-[13px] animate-pulse" style={{ color: 'var(--color-gray-400)' }}>
+                <td colSpan={18} className="py-12 text-center text-[13px] animate-pulse" style={{ color: 'var(--color-gray-400)' }}>
                   読み込み中…
                 </td>
               </tr>
             )}
             {!loading && leads.length === 0 && (
               <tr>
-                <td colSpan={17} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
+                <td colSpan={18} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
                   データがありません
                 </td>
               </tr>
@@ -234,6 +252,15 @@ export default function LeadsPage() {
                 onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-gray-50)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
+                <td
+                  className="px-2 py-1.5 text-[11px] align-middle text-center"
+                  style={{ width: w.list_record_id, minWidth: w.list_record_id, maxWidth: w.list_record_id }}
+                >
+                  <ListLinkBadge
+                    listRecordId={lead.list_record_id}
+                    onNavigate={() => router.push(`/list/${lead.list_record_id}`)}
+                  />
+                </td>
                 <Td value={lead.inquiry_date}          w={w.inquiry_date} />
                 <Td value={lead.ad_name}               w={w.ad_name} />
                 <Td value={lead.company_name}          w={w.company_name} />
@@ -248,38 +275,38 @@ export default function LeadsPage() {
                 >
                   <ResultBadge result={lead.last_call_result} />
                 </td>
-                <Td value={lead.completion_progress}  w={w.completion_progress} />
+                <Td value={lead.completion_progress}   w={w.completion_progress} />
                 <td
                   className="px-2 py-1.5 text-[11px] align-middle tabular-nums text-right"
                   style={{ width: w.call_count, minWidth: w.call_count, maxWidth: w.call_count, color: 'var(--color-gray-600)' }}
                 >
                   {lead.call_count != null ? Number(lead.call_count) : '—'}
                 </td>
-                <Td value={lead.recall_date}          w={w.recall_date} />
-                <Td value={lead.recall_time}          w={w.recall_time} />
+                <Td value={lead.recall_date}           w={w.recall_date} />
+                <Td value={lead.recall_time}           w={w.recall_time} />
                 <td
                   className="px-2 py-1.5 text-[11px] align-middle text-center"
                   style={{ width: w.adjusting, minWidth: w.adjusting, maxWidth: w.adjusting }}
                 >
-                  <BoolBadge value={lead.adjusting}   label="調整中" color="warning" />
+                  <BoolBadge value={lead.adjusting}    label="調整中" color="warning" />
                 </td>
                 <td
                   className="px-2 py-1.5 text-[11px] align-middle text-center"
                   style={{ width: w.jitsuyo_ok, minWidth: w.jitsuyo_ok, maxWidth: w.jitsuyo_ok }}
                 >
-                  <BoolBadge value={lead.jitsuyo_ok}  label="採用OK" color="success" />
+                  <BoolBadge value={lead.jitsuyo_ok}   label="採用OK" color="success" />
                 </td>
                 <td
                   className="px-2 py-1.5 text-[11px] align-middle text-center"
                   style={{ width: w.ichiyou_ng, minWidth: w.ichiyou_ng, maxWidth: w.ichiyou_ng }}
                 >
-                  <BoolBadge value={lead.ichiyou_ng}  label="採用NG" color="danger" />
+                  <BoolBadge value={lead.ichiyou_ng}   label="採用NG" color="danger" />
                 </td>
                 <td
                   className="px-2 py-1.5 text-[11px] align-middle text-center"
                   style={{ width: w.order_closed, minWidth: w.order_closed, maxWidth: w.order_closed }}
                 >
-                  <BoolBadge value={lead.order_closed} label="受注" color="success" />
+                  <BoolBadge value={lead.order_closed} label="受注"   color="success" />
                 </td>
               </tr>
             ))}
