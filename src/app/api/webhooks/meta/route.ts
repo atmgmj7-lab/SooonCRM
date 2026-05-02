@@ -121,6 +121,27 @@ export async function POST(request: Request) {
           }
         }
 
+        // leadsにも登録（問い合わせ履歴として記録）
+        const now = new Date().toISOString()
+        const today = now.slice(0, 10)
+        const { error: leadInsertError } = await supabase
+          .from('leads')
+          .insert({
+            tenant_id:           tenantId,
+            list_record_id:      matched?.id ?? null,
+            ad_name:             (value.ad_name as string) ?? mappedData.ad_name ?? null,
+            company_name:        mappedData.company_name ?? null,
+            representative_name: mappedData.full_name ?? mappedData.representative_name ?? null,
+            phone_number:        phoneNormalized || null,
+            inquiry_date:        today,
+            inquiry_at:          now,
+            source_data:         value,
+          })
+
+        if (leadInsertError) {
+          console.error('[meta-webhook] leads insert error:', leadInsertError.message)
+        }
+
         saved += 1
       }
     }

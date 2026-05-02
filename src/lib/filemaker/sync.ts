@@ -66,6 +66,7 @@ export async function syncListRecords(_sinceModified?: string) {
             tenant_id:          TENANT_ID,
             fm_record_id:       fmRecordId,
             fm_modification_id: fmModId,
+            source:             'filemaker',
             ...mapped,
           }, {
             onConflict: 'fm_record_id',
