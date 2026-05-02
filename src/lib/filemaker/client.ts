@@ -115,7 +115,12 @@ export async function fmFindRecords(
   })
 
   if (res.status === 401) { _token = null; return fmFindRecords(layout, query, params) }
-  if (!res.ok) throw new Error(`FM findRecords failed: ${res.status}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { messages?: { code: string }[] }
+    // FM error code 401 = no records match the request
+    if (body.messages?.[0]?.code === '401') return { response: { data: [] } }
+    throw new Error(`FM findRecords failed: ${res.status} ${JSON.stringify(body)}`)
+  }
   return res.json() as Promise<{ response: { data: { recordId: string; fieldData: Record<string, unknown> }[] } }>
 }
 

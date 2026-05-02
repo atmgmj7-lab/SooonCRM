@@ -11,46 +11,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const body = await req.json().catch(() => ({})) as { fullSync?: boolean }
-  const fullSync = body.fullSync === true
+  // target: 'list'(デフォルト・Vercel cron用) | 'calls' | 'all'
+  // calls は202,781件のためVercel 300s制限を超えるので、ローカルで実行する
+  const body = await req.json().catch(() => ({})) as { target?: string }
+  const target = body.target ?? 'list'
 
   try {
     const supabase = createAdminClient()
-    let sinceModified: string | undefined
+    let listResult = { totalSynced: 0, totalErrors: 0, totalSkipped: 0 }
+    let callResult = { totalSynced: 0, totalErrors: 0, totalSkipped: 0 }
 
-    if (!fullSync) {
-      const { data } = await supabase
-        .from('sync_logs')
-        .select('synced_at')
-        .eq('type', 'fm_list')
-        .order('synced_at', { ascending: false })
-        .limit(1)
-        .single()
-      sinceModified = data?.synced_at ?? undefined
+    if (target === 'list' || target === 'all') {
+      listResult = await syncListRecords()
+      await supabase.from('sync_logs').insert({
+        type: 'fm_list',
+        synced_at: new Date().toISOString(),
+        records_synced: listResult.totalSynced,
+        errors: listResult.totalErrors,
+      })
     }
 
-    // 1. リスト情報を先に同期（callsの親なので必ず先）
-    const listResult = await syncListRecords(sinceModified)
-
-    // 2. コール履歴を同期
-    const callResult = await syncCalls(sinceModified)
-
-    // 3. 同期ログ記録
-    await supabase.from('sync_logs').insert({
-      type: 'fm_list',
-      synced_at: new Date().toISOString(),
-      records_synced: listResult.totalSynced,
-      errors: listResult.totalErrors,
-    })
-    await supabase.from('sync_logs').insert({
-      type: 'fm_calls',
-      synced_at: new Date().toISOString(),
-      records_synced: callResult.totalSynced,
-      errors: callResult.totalErrors,
-    })
+    if (target === 'calls' || target === 'all') {
+      callResult = await syncCalls()
+      await supabase.from('sync_logs').insert({
+        type: 'fm_calls',
+        synced_at: new Date().toISOString(),
+        records_synced: callResult.totalSynced,
+        errors: callResult.totalErrors,
+      })
+    }
 
     return NextResponse.json({
       success: true,
+      target,
       list: listResult,
       calls: callResult,
     })
