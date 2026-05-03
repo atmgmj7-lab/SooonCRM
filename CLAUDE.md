@@ -196,3 +196,6 @@ font-family: 'Hiragino Sans', 'ヒラギノ角ゴシック', 'Hiragino Kaku Goth
 - **AI_LEARNING_FOUNDATION.md** — AI学習基盤
 - **AD_MANAGER_SPEC.md** — 広告マネージャー画面仕様
 - **EXECUTION_PLAN.md** — Claude Code 実行手順
+
+## 共通ルール参照
+> `@../CLAUDE.md` 参照。セッション開始時は `@docs/tasks.md` を確認すること。
