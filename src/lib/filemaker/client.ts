@@ -156,3 +156,29 @@ export async function fmUpdateRecord(
     throw new Error(`FM updateRecord failed: ${res.status} ${body}`)
   }
 }
+
+export async function fmCreateRecord(
+  fieldData: Record<string, unknown>
+): Promise<{ recordId: string } | null> {
+  const layout = process.env.FM_LAYOUT_LIST
+  if (!layout) return null
+  const token = await getFMToken()
+  const res = await fetch(
+    `${getBaseUrl()}/layouts/${encodeURIComponent(layout)}/records`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ fieldData }),
+    }
+  )
+  if (res.status === 401) {
+    _token = null
+    return fmCreateRecord(fieldData)
+  }
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`FM createRecord failed: ${res.status} ${body}`)
+  }
+  const data = await res.json() as { response: { recordId: string } }
+  return { recordId: data.response.recordId }
+}

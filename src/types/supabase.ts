@@ -5,63 +5,39 @@ export type Json =
   | null
   | { [key: string]: Json | undefined }
   | Json[]
-
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
-      ad_sets: {
-        Row: {
-          id: string
-          tenant_id: string
-          campaign_id: string
-          external_id: string
-          name: string
-          status: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          tenant_id: string
-          campaign_id: string
-          external_id: string
-          name: string
-          status?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          tenant_id?: string
-          campaign_id?: string
-          external_id?: string
-          name?: string
-          status?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ad_sets_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "ad_campaigns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ad_sets_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       ad_campaigns: {
         Row: {
           created_at: string
@@ -80,7 +56,7 @@ export type Database = {
           total_leads: number
           total_spend: number
           updated_at: string
-          visible?: boolean | null
+          visible: boolean
         }
         Insert: {
           created_at?: string
@@ -99,7 +75,7 @@ export type Database = {
           total_leads?: number
           total_spend?: number
           updated_at?: string
-          visible?: boolean | null
+          visible?: boolean
         }
         Update: {
           created_at?: string
@@ -118,7 +94,7 @@ export type Database = {
           total_leads?: number
           total_spend?: number
           updated_at?: string
-          visible?: boolean | null
+          visible?: boolean
         }
         Relationships: [
           {
@@ -146,6 +122,7 @@ export type Database = {
           total_leads: number
           total_spend: number
           updated_at: string
+          visible: boolean
         }
         Insert: {
           ad_format?: string | null
@@ -162,6 +139,7 @@ export type Database = {
           total_leads?: number
           total_spend?: number
           updated_at?: string
+          visible?: boolean
         }
         Update: {
           ad_format?: string | null
@@ -178,6 +156,7 @@ export type Database = {
           total_leads?: number
           total_spend?: number
           updated_at?: string
+          visible?: boolean
         }
         Relationships: [
           {
@@ -189,6 +168,54 @@ export type Database = {
           },
           {
             foreignKeyName: "ad_creatives_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_sets: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          external_id: string
+          id: string
+          name: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          external_id: string
+          id?: string
+          name: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          external_id?: string
+          id?: string
+          name?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_sets_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "ad_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_sets_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -296,25 +323,28 @@ export type Database = {
       }
       ad_sync_state: {
         Row: {
-          last_synced_date: string
+          id: string
+          last_synced_date: string | null
           tenant_id: string
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
-          last_synced_date: string
+          id?: string
+          last_synced_date?: string | null
           tenant_id: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
-          last_synced_date?: string
+          id?: string
+          last_synced_date?: string | null
           tenant_id?: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "ad_sync_state_tenant_id_fkey"
             columns: ["tenant_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
@@ -541,20 +571,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "call_embeddings_call_id_fkey"
-            columns: ["call_id"]
-            isOneToOne: false
-            referencedRelation: "calls"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "call_embeddings_call_id_fkey"
-            columns: ["call_id"]
-            isOneToOne: false
-            referencedRelation: "v_call_full"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "call_embeddings_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -608,20 +624,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "call_transcripts_call_id_fkey"
-            columns: ["call_id"]
-            isOneToOne: true
-            referencedRelation: "calls"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "call_transcripts_call_id_fkey"
-            columns: ["call_id"]
-            isOneToOne: true
-            referencedRelation: "v_call_full"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "call_transcripts_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -632,84 +634,114 @@ export type Database = {
       }
       calls: {
         Row: {
-          agent_display_name: string | null
           agent_id: string | null
+          agent_name: string | null
           appo_detail: string | null
           audio_r2_key: string | null
-          audio_url: string | null
-          category: string | null
-          cl: string | null
+          call_category: string | null
+          call_date: string
+          call_duration_minutes: number | null
+          call_duration_seconds: number | null
+          call_end_date: string | null
+          call_end_time: string | null
+          call_history_id: string | null
+          call_number: number
+          call_result: string | null
+          call_start_time: string | null
+          called_at: string | null
+          ci: string | null
+          claris_id: string | null
           created_at: string
           custom_data: Json
-          customer_id: string
-          day_of_week: string | null
           direction: string
           duration_seconds: number | null
-          ended_at: string | null
+          fm_modification_id: string | null
           fm_record_id: string | null
-          fm_synced_at: string | null
+          hidden_flag: string | null
           id: string
-          lead_id: string
+          inquiry_date: string | null
+          lead_id: string | null
+          list_name: string | null
+          list_record_id: string
+          list_source: string | null
+          reissue_pending: string | null
           rep_hit: string | null
           rep_level: string | null
           rep_level2: string | null
-          result: string | null
-          result_note: string | null
-          started_at: string
           tenant_id: string
         }
         Insert: {
-          agent_display_name?: string | null
           agent_id?: string | null
+          agent_name?: string | null
           appo_detail?: string | null
           audio_r2_key?: string | null
-          audio_url?: string | null
-          category?: string | null
-          cl?: string | null
+          call_category?: string | null
+          call_date?: string
+          call_duration_minutes?: number | null
+          call_duration_seconds?: number | null
+          call_end_date?: string | null
+          call_end_time?: string | null
+          call_history_id?: string | null
+          call_number?: number
+          call_result?: string | null
+          call_start_time?: string | null
+          called_at?: string | null
+          ci?: string | null
+          claris_id?: string | null
           created_at?: string
           custom_data?: Json
-          customer_id: string
-          day_of_week?: string | null
           direction?: string
           duration_seconds?: number | null
-          ended_at?: string | null
+          fm_modification_id?: string | null
           fm_record_id?: string | null
-          fm_synced_at?: string | null
+          hidden_flag?: string | null
           id?: string
-          lead_id: string
+          inquiry_date?: string | null
+          lead_id?: string | null
+          list_name?: string | null
+          list_record_id: string
+          list_source?: string | null
+          reissue_pending?: string | null
           rep_hit?: string | null
           rep_level?: string | null
           rep_level2?: string | null
-          result?: string | null
-          result_note?: string | null
-          started_at?: string
           tenant_id: string
         }
         Update: {
-          agent_display_name?: string | null
           agent_id?: string | null
+          agent_name?: string | null
           appo_detail?: string | null
           audio_r2_key?: string | null
-          audio_url?: string | null
-          category?: string | null
-          cl?: string | null
+          call_category?: string | null
+          call_date?: string
+          call_duration_minutes?: number | null
+          call_duration_seconds?: number | null
+          call_end_date?: string | null
+          call_end_time?: string | null
+          call_history_id?: string | null
+          call_number?: number
+          call_result?: string | null
+          call_start_time?: string | null
+          called_at?: string | null
+          ci?: string | null
+          claris_id?: string | null
           created_at?: string
           custom_data?: Json
-          customer_id?: string
-          day_of_week?: string | null
           direction?: string
           duration_seconds?: number | null
-          ended_at?: string | null
+          fm_modification_id?: string | null
           fm_record_id?: string | null
-          fm_synced_at?: string | null
+          hidden_flag?: string | null
           id?: string
-          lead_id?: string
+          inquiry_date?: string | null
+          lead_id?: string | null
+          list_name?: string | null
+          list_record_id?: string
+          list_source?: string | null
+          reissue_pending?: string | null
           rep_hit?: string | null
           rep_level?: string | null
           rep_level2?: string | null
-          result?: string | null
-          result_note?: string | null
-          started_at?: string
           tenant_id?: string
         }
         Relationships: [
@@ -721,13 +753,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "calls_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "calls_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
@@ -735,10 +760,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "calls_lead_id_fkey"
-            columns: ["lead_id"]
+            foreignKeyName: "calls_list_record_id_fkey"
+            columns: ["list_record_id"]
             isOneToOne: false
-            referencedRelation: "v_lead_with_customer"
+            referencedRelation: "list_records"
             referencedColumns: ["id"]
           },
           {
@@ -749,6 +774,99 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      csv_import_temp: {
+        Row: {
+          "980円プランに加え、集客効果を高めるための追": string | null
+          phone_number: string | null
+          "Web集客全般（MEOやHP等）の売上アップ提案を受": string | null
+          コール数: string | null
+          "サービスの導入や予算に関して、決裁権をお持": string | null
+          メール: string | null
+          代表名: string | null
+          会社名: string | null
+          再日: string | null
+          再時間: string | null
+          最終架電結果: string | null
+          初期: string | null
+          受注: string | null
+          問い合わせ日: string | null
+          契約月数: string | null
+          完了進捗: string | null
+          "導入検討とご案内のため【オンラインで60分程": string | null
+          市区: string | null
+          広告名: string | null
+          役職: string | null
+          採用NG: string | null
+          採用OK: string | null
+          月額: string | null
+          県名: string | null
+          総受注額: string | null
+          詳細: string | null
+          調整中: string | null
+          "電話番号（81変換）": string | null
+        }
+        Insert: {
+          "980円プランに加え、集客効果を高めるための追"?: string | null
+          phone_number?: string | null
+          "Web集客全般（MEOやHP等）の売上アップ提案を受"?: string | null
+          コール数?: string | null
+          "サービスの導入や予算に関して、決裁権をお持"?: string | null
+          メール?: string | null
+          代表名?: string | null
+          会社名?: string | null
+          再日?: string | null
+          再時間?: string | null
+          最終架電結果?: string | null
+          初期?: string | null
+          受注?: string | null
+          問い合わせ日?: string | null
+          契約月数?: string | null
+          完了進捗?: string | null
+          "導入検討とご案内のため【オンラインで60分程"?: string | null
+          市区?: string | null
+          広告名?: string | null
+          役職?: string | null
+          採用NG?: string | null
+          採用OK?: string | null
+          月額?: string | null
+          県名?: string | null
+          総受注額?: string | null
+          詳細?: string | null
+          調整中?: string | null
+          "電話番号（81変換）"?: string | null
+        }
+        Update: {
+          "980円プランに加え、集客効果を高めるための追"?: string | null
+          phone_number?: string | null
+          "Web集客全般（MEOやHP等）の売上アップ提案を受"?: string | null
+          コール数?: string | null
+          "サービスの導入や予算に関して、決裁権をお持"?: string | null
+          メール?: string | null
+          代表名?: string | null
+          会社名?: string | null
+          再日?: string | null
+          再時間?: string | null
+          最終架電結果?: string | null
+          初期?: string | null
+          受注?: string | null
+          問い合わせ日?: string | null
+          契約月数?: string | null
+          完了進捗?: string | null
+          "導入検討とご案内のため【オンラインで60分程"?: string | null
+          市区?: string | null
+          広告名?: string | null
+          役職?: string | null
+          採用NG?: string | null
+          採用OK?: string | null
+          月額?: string | null
+          県名?: string | null
+          総受注額?: string | null
+          詳細?: string | null
+          調整中?: string | null
+          "電話番号（81変換）"?: string | null
+        }
+        Relationships: []
       }
       customers: {
         Row: {
@@ -956,13 +1074,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "deals_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "v_lead_with_customer"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "deals_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -1156,25 +1267,55 @@ export type Database = {
           ad_campaign_id: string | null
           ad_creative_id: string | null
           ad_name: string | null
+          adjusting: boolean | null
+          adset_id: string | null
+          appo_at: string | null
           assigned_to: string | null
+          call_count: string | null
+          city: string | null
+          company_name: string | null
+          completion_progress: string | null
+          contract_months: string | null
           created_at: string
+          csv_row_number: number | null
           custom_data: Json
-          customer_id: string
+          customer_id: string | null
           deal_amount: number | null
           deal_closed_at: string | null
+          email_address: string | null
           first_call_at: string | null
           fm_record_id: string | null
           fm_synced_at: string | null
+          form_q1: string | null
+          form_q2: string | null
+          form_q3: string | null
+          form_q4: string | null
           has_deal: boolean
+          ichiyou_ng: boolean | null
           id: string
+          imported_from_csv: boolean | null
+          initial_fee: string | null
           inquiry_at: string
           inquiry_content: string | null
+          inquiry_date: string | null
+          inquiry_date_1: string | null
+          inquiry_datetime_raw: string | null
+          jitsuyo_ok: boolean | null
           last_call_at: string | null
+          last_call_result: string | null
+          lead_detail: string | null
           list_handover_date: string | null
+          list_record_id: string | null
           lost_reason: string | null
+          monthly_fee: string | null
+          order_closed: boolean | null
+          phone_number: string | null
+          prefecture: string | null
           priority_score: number
           recall_date: string | null
           recall_time: string | null
+          rep_title: string | null
+          representative_name: string | null
           source: string
           source_data: Json
           status: string
@@ -1185,31 +1326,63 @@ export type Database = {
           temperature_reason: string | null
           tenant_id: string
           total_call_count: number
+          total_revenue: string | null
           updated_at: string
+          webhook_lead_id: string | null
         }
         Insert: {
           ad_campaign_id?: string | null
           ad_creative_id?: string | null
           ad_name?: string | null
+          adjusting?: boolean | null
+          adset_id?: string | null
+          appo_at?: string | null
           assigned_to?: string | null
+          call_count?: string | null
+          city?: string | null
+          company_name?: string | null
+          completion_progress?: string | null
+          contract_months?: string | null
           created_at?: string
+          csv_row_number?: number | null
           custom_data?: Json
-          customer_id: string
+          customer_id?: string | null
           deal_amount?: number | null
           deal_closed_at?: string | null
+          email_address?: string | null
           first_call_at?: string | null
           fm_record_id?: string | null
           fm_synced_at?: string | null
+          form_q1?: string | null
+          form_q2?: string | null
+          form_q3?: string | null
+          form_q4?: string | null
           has_deal?: boolean
+          ichiyou_ng?: boolean | null
           id?: string
+          imported_from_csv?: boolean | null
+          initial_fee?: string | null
           inquiry_at: string
           inquiry_content?: string | null
+          inquiry_date?: string | null
+          inquiry_date_1?: string | null
+          inquiry_datetime_raw?: string | null
+          jitsuyo_ok?: boolean | null
           last_call_at?: string | null
+          last_call_result?: string | null
+          lead_detail?: string | null
           list_handover_date?: string | null
+          list_record_id?: string | null
           lost_reason?: string | null
+          monthly_fee?: string | null
+          order_closed?: boolean | null
+          phone_number?: string | null
+          prefecture?: string | null
           priority_score?: number
           recall_date?: string | null
           recall_time?: string | null
+          rep_title?: string | null
+          representative_name?: string | null
           source?: string
           source_data?: Json
           status?: string
@@ -1220,31 +1393,63 @@ export type Database = {
           temperature_reason?: string | null
           tenant_id: string
           total_call_count?: number
+          total_revenue?: string | null
           updated_at?: string
+          webhook_lead_id?: string | null
         }
         Update: {
           ad_campaign_id?: string | null
           ad_creative_id?: string | null
           ad_name?: string | null
+          adjusting?: boolean | null
+          adset_id?: string | null
+          appo_at?: string | null
           assigned_to?: string | null
+          call_count?: string | null
+          city?: string | null
+          company_name?: string | null
+          completion_progress?: string | null
+          contract_months?: string | null
           created_at?: string
+          csv_row_number?: number | null
           custom_data?: Json
-          customer_id?: string
+          customer_id?: string | null
           deal_amount?: number | null
           deal_closed_at?: string | null
+          email_address?: string | null
           first_call_at?: string | null
           fm_record_id?: string | null
           fm_synced_at?: string | null
+          form_q1?: string | null
+          form_q2?: string | null
+          form_q3?: string | null
+          form_q4?: string | null
           has_deal?: boolean
+          ichiyou_ng?: boolean | null
           id?: string
+          imported_from_csv?: boolean | null
+          initial_fee?: string | null
           inquiry_at?: string
           inquiry_content?: string | null
+          inquiry_date?: string | null
+          inquiry_date_1?: string | null
+          inquiry_datetime_raw?: string | null
+          jitsuyo_ok?: boolean | null
           last_call_at?: string | null
+          last_call_result?: string | null
+          lead_detail?: string | null
           list_handover_date?: string | null
+          list_record_id?: string | null
           lost_reason?: string | null
+          monthly_fee?: string | null
+          order_closed?: boolean | null
+          phone_number?: string | null
+          prefecture?: string | null
           priority_score?: number
           recall_date?: string | null
           recall_time?: string | null
+          rep_title?: string | null
+          representative_name?: string | null
           source?: string
           source_data?: Json
           status?: string
@@ -1255,7 +1460,9 @@ export type Database = {
           temperature_reason?: string | null
           tenant_id?: string
           total_call_count?: number
+          total_revenue?: string | null
           updated_at?: string
+          webhook_lead_id?: string | null
         }
         Relationships: [
           {
@@ -1280,13 +1487,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "leads_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "leads_status_locked_by_fkey"
             columns: ["status_locked_by"]
             isOneToOne: false
@@ -1298,6 +1498,223 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_webhook_lead_id_fkey"
+            columns: ["webhook_lead_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      list_records: {
+        Row: {
+          ad_name: string | null
+          address: string | null
+          assigned_to: string | null
+          business_end_time: string | null
+          business_start_time: string | null
+          case_memo: string | null
+          company_email: string | null
+          company_name: string | null
+          created_at: string
+          custom_data: Json
+          customer_id: string | null
+          deal_amount: number | null
+          deal_closed_at: string | null
+          fm_modification_id: string | null
+          fm_record_id: string | null
+          homepage_exists: string | null
+          homepage_url: string | null
+          id: string
+          industry: string | null
+          inquiry_count: number | null
+          last_call_agent: string | null
+          last_call_appo_detail: string | null
+          last_call_category: string | null
+          last_call_count: number
+          last_call_date: string | null
+          last_call_end_time: string | null
+          last_call_list_name: string | null
+          last_call_rep_level: string | null
+          last_call_rep_level2: string | null
+          last_call_result: string | null
+          last_call_start_time: string | null
+          last_inquiry_ad_name: string | null
+          last_inquiry_at: string | null
+          list_created_at: string | null
+          list_handover_date: string | null
+          list_name: string | null
+          list_screening: string | null
+          lost_reason: string | null
+          meeting_date: string | null
+          meeting_time: string | null
+          meo_status: Json
+          newcomer_flag: string | null
+          phone_numbers: Json
+          pre_setup_agent: string | null
+          pre_setup_date: string | null
+          prefecture: string | null
+          priority_score: number
+          recall_date: string | null
+          recall_time: string | null
+          regular_holidays: Json
+          representative_name: string | null
+          sales_agent: string | null
+          source: string | null
+          source_data: Json
+          status: string
+          temperature: string
+          temperature_reason: string | null
+          tenant_id: string
+          title: string | null
+          updated_at: string
+          webhook_lead_id: string | null
+          zoom_url: string | null
+        }
+        Insert: {
+          ad_name?: string | null
+          address?: string | null
+          assigned_to?: string | null
+          business_end_time?: string | null
+          business_start_time?: string | null
+          case_memo?: string | null
+          company_email?: string | null
+          company_name?: string | null
+          created_at?: string
+          custom_data?: Json
+          customer_id?: string | null
+          deal_amount?: number | null
+          deal_closed_at?: string | null
+          fm_modification_id?: string | null
+          fm_record_id?: string | null
+          homepage_exists?: string | null
+          homepage_url?: string | null
+          id?: string
+          industry?: string | null
+          inquiry_count?: number | null
+          last_call_agent?: string | null
+          last_call_appo_detail?: string | null
+          last_call_category?: string | null
+          last_call_count?: number
+          last_call_date?: string | null
+          last_call_end_time?: string | null
+          last_call_list_name?: string | null
+          last_call_rep_level?: string | null
+          last_call_rep_level2?: string | null
+          last_call_result?: string | null
+          last_call_start_time?: string | null
+          last_inquiry_ad_name?: string | null
+          last_inquiry_at?: string | null
+          list_created_at?: string | null
+          list_handover_date?: string | null
+          list_name?: string | null
+          list_screening?: string | null
+          lost_reason?: string | null
+          meeting_date?: string | null
+          meeting_time?: string | null
+          meo_status?: Json
+          newcomer_flag?: string | null
+          phone_numbers?: Json
+          pre_setup_agent?: string | null
+          pre_setup_date?: string | null
+          prefecture?: string | null
+          priority_score?: number
+          recall_date?: string | null
+          recall_time?: string | null
+          regular_holidays?: Json
+          representative_name?: string | null
+          sales_agent?: string | null
+          source?: string | null
+          source_data?: Json
+          status?: string
+          temperature?: string
+          temperature_reason?: string | null
+          tenant_id: string
+          title?: string | null
+          updated_at?: string
+          webhook_lead_id?: string | null
+          zoom_url?: string | null
+        }
+        Update: {
+          ad_name?: string | null
+          address?: string | null
+          assigned_to?: string | null
+          business_end_time?: string | null
+          business_start_time?: string | null
+          case_memo?: string | null
+          company_email?: string | null
+          company_name?: string | null
+          created_at?: string
+          custom_data?: Json
+          customer_id?: string | null
+          deal_amount?: number | null
+          deal_closed_at?: string | null
+          fm_modification_id?: string | null
+          fm_record_id?: string | null
+          homepage_exists?: string | null
+          homepage_url?: string | null
+          id?: string
+          industry?: string | null
+          inquiry_count?: number | null
+          last_call_agent?: string | null
+          last_call_appo_detail?: string | null
+          last_call_category?: string | null
+          last_call_count?: number
+          last_call_date?: string | null
+          last_call_end_time?: string | null
+          last_call_list_name?: string | null
+          last_call_rep_level?: string | null
+          last_call_rep_level2?: string | null
+          last_call_result?: string | null
+          last_call_start_time?: string | null
+          last_inquiry_ad_name?: string | null
+          last_inquiry_at?: string | null
+          list_created_at?: string | null
+          list_handover_date?: string | null
+          list_name?: string | null
+          list_screening?: string | null
+          lost_reason?: string | null
+          meeting_date?: string | null
+          meeting_time?: string | null
+          meo_status?: Json
+          newcomer_flag?: string | null
+          phone_numbers?: Json
+          pre_setup_agent?: string | null
+          pre_setup_date?: string | null
+          prefecture?: string | null
+          priority_score?: number
+          recall_date?: string | null
+          recall_time?: string | null
+          regular_holidays?: Json
+          representative_name?: string | null
+          sales_agent?: string | null
+          source?: string | null
+          source_data?: Json
+          status?: string
+          temperature?: string
+          temperature_reason?: string | null
+          tenant_id?: string
+          title?: string | null
+          updated_at?: string
+          webhook_lead_id?: string | null
+          zoom_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "list_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "list_records_webhook_lead_id_fkey"
+            columns: ["webhook_lead_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_leads"
             referencedColumns: ["id"]
           },
         ]
@@ -1416,6 +1833,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "status_definitions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_logs: {
+        Row: {
+          errors: number | null
+          id: string
+          meta: Json | null
+          records_synced: number | null
+          synced_at: string
+          tenant_id: string | null
+          type: string
+        }
+        Insert: {
+          errors?: number | null
+          id?: string
+          meta?: Json | null
+          records_synced?: number | null
+          synced_at?: string
+          tenant_id?: string | null
+          type: string
+        }
+        Update: {
+          errors?: number | null
+          id?: string
+          meta?: Json | null
+          records_synced?: number | null
+          synced_at?: string
+          tenant_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_logs_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1580,185 +2035,68 @@ export type Database = {
           },
         ]
       }
+      webhook_leads: {
+        Row: {
+          ad_name: string | null
+          added_at: string | null
+          added_to_list_id: string | null
+          created_at: string
+          id: string
+          mapped_data: Json
+          match_status: string | null
+          phone_normalized: string | null
+          raw_data: Json
+          received_at: string
+          source: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          ad_name?: string | null
+          added_at?: string | null
+          added_to_list_id?: string | null
+          created_at?: string
+          id?: string
+          mapped_data?: Json
+          match_status?: string | null
+          phone_normalized?: string | null
+          raw_data?: Json
+          received_at?: string
+          source?: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          ad_name?: string | null
+          added_at?: string | null
+          added_to_list_id?: string | null
+          created_at?: string
+          id?: string
+          mapped_data?: Json
+          match_status?: string | null
+          phone_normalized?: string | null
+          raw_data?: Json
+          received_at?: string
+          source?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_leads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      v_call_full: {
-        Row: {
-          ad_campaign_id: string | null
-          ad_creative_id: string | null
-          agent_display_name: string | null
-          agent_id: string | null
-          appo_detail: string | null
-          audio_r2_key: string | null
-          audio_url: string | null
-          category: string | null
-          cl: string | null
-          company_name: string | null
-          created_at: string | null
-          custom_data: Json | null
-          customer_code: string | null
-          customer_id: string | null
-          day_of_week: string | null
-          direction: string | null
-          duration_seconds: number | null
-          ended_at: string | null
-          fm_record_id: string | null
-          fm_synced_at: string | null
-          id: string | null
-          lead_id: string | null
-          lead_source: string | null
-          lead_status: string | null
-          rep_hit: string | null
-          rep_level: string | null
-          rep_level2: string | null
-          representative_name: string | null
-          result: string | null
-          result_note: string | null
-          started_at: string | null
-          tenant_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "calls_agent_id_fkey"
-            columns: ["agent_id"]
-            isOneToOne: false
-            referencedRelation: "tenant_members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "calls_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "calls_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "calls_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "v_lead_with_customer"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "calls_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "leads_ad_campaign_id_fkey"
-            columns: ["ad_campaign_id"]
-            isOneToOne: false
-            referencedRelation: "ad_campaigns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "leads_ad_creative_id_fkey"
-            columns: ["ad_creative_id"]
-            isOneToOne: false
-            referencedRelation: "ad_creatives"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      v_lead_with_customer: {
-        Row: {
-          ad_campaign_id: string | null
-          ad_creative_id: string | null
-          ad_name: string | null
-          assigned_to: string | null
-          company_name: string | null
-          created_at: string | null
-          custom_data: Json | null
-          customer_code: string | null
-          customer_id: string | null
-          deal_amount: number | null
-          deal_closed_at: string | null
-          email: string | null
-          first_call_at: string | null
-          fm_record_id: string | null
-          fm_synced_at: string | null
-          has_deal: boolean | null
-          id: string | null
-          industry: string | null
-          inquiry_at: string | null
-          inquiry_content: string | null
-          last_call_at: string | null
-          list_handover_date: string | null
-          lost_reason: string | null
-          prefecture: string | null
-          primary_phone: string | null
-          priority_score: number | null
-          recall_date: string | null
-          recall_time: string | null
-          representative_name: string | null
-          source: string | null
-          source_data: Json | null
-          status: string | null
-          status_history: Json | null
-          status_locked_at: string | null
-          status_locked_by: string | null
-          temperature: string | null
-          temperature_reason: string | null
-          tenant_id: string | null
-          total_call_count: number | null
-          updated_at: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "leads_ad_campaign_id_fkey"
-            columns: ["ad_campaign_id"]
-            isOneToOne: false
-            referencedRelation: "ad_campaigns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "leads_ad_creative_id_fkey"
-            columns: ["ad_creative_id"]
-            isOneToOne: false
-            referencedRelation: "ad_creatives"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "leads_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "tenant_members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "leads_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "leads_status_locked_by_fkey"
-            columns: ["status_locked_by"]
-            isOneToOne: false
-            referencedRelation: "tenant_members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "leads_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
+      generate_customer_id: { Args: { p_tenant_id: string }; Returns: string }
       get_ad_cohort_metrics: {
         Args: {
           p_campaign_id?: string
@@ -1823,26 +2161,27 @@ export type Database = {
           p_tenant_id?: string
         }
         Returns: {
-          spend_date: string
-          platform: string
-          campaign_id: string
-          campaign_name: string
-          campaign_db_id: string
+          ad_set_db_id: string
           ad_set_id: string
           ad_set_name: string
-          ad_set_db_id: string
-          spend: number
-          impressions: number
-          clicks: number
-          leads_count: number
           apo_count: number
-          won_count: number
-          won_amount: number
-          roas: number
-          cpo: number
+          campaign_db_id: string
+          campaign_id: string
+          campaign_name: string
+          clicks: number
           cpa: number
           cpc: number
           cpm: number
+          cpo: number
+          impressions: number
+          leads_count: number
+          platform: string
+          reach: number
+          roas: number
+          spend: number
+          spend_date: string
+          won_amount: number
+          won_count: number
         }[]
       }
       get_current_tenant_id: { Args: never; Returns: string }
@@ -1859,6 +2198,18 @@ export type Database = {
           lead_count: number
           ltv_months: number
           total_amount: number
+        }[]
+      }
+      get_lead_stats_by_adset: {
+        Args: { from_date?: string; target_tenant_id: string; to_date?: string }
+        Returns: {
+          adset_id: string
+          appo_ok_count: number
+          appo_rate: number
+          order_count: number
+          order_rate: number
+          total_leads: number
+          total_revenue: number
         }[]
       }
       get_tenant_kpi: {
@@ -1880,11 +2231,8 @@ export type Database = {
     }
   }
 }
-
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
-
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
-
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
@@ -1913,7 +2261,6 @@ export type Tables<
       ? R
       : never
     : never
-
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
@@ -1938,7 +2285,6 @@ export type TablesInsert<
       ? I
       : never
     : never
-
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
@@ -1963,7 +2309,6 @@ export type TablesUpdate<
       ? U
       : never
     : never
-
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
@@ -1980,7 +2325,6 @@ export type Enums<
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
-
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
@@ -1997,8 +2341,10 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
-
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

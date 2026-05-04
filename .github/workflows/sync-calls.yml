@@ -1,0 +1,35 @@
+name: FM Calls Sync
+
+on:
+  schedule:
+    - cron: '30 */1 * * *'  # 1時間ごと（毎時30分）
+  workflow_dispatch:
+
+jobs:
+  sync-calls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run calls sync
+        run: npx tsx scripts/sync-calls-bulk.ts
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DEFAULT_TENANT_ID: ${{ secrets.DEFAULT_TENANT_ID }}
+          FM_HOST: ${{ secrets.FM_HOST }}
+          FM_DATABASE: ${{ secrets.FM_DATABASE }}
+          FM_USERNAME: ${{ secrets.FM_USERNAME }}
+          FM_PASSWORD: ${{ secrets.FM_PASSWORD }}
+          FM_REFRESH_TOKEN: ${{ secrets.FM_REFRESH_TOKEN }}
+          FM_LAYOUT_CALLS: ${{ secrets.FM_LAYOUT_CALLS }}

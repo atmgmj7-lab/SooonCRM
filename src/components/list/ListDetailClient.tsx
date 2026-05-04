@@ -163,7 +163,7 @@ export function ListDetailClient({
       className="-m-8 flex overflow-hidden"
       style={{ height: 'calc(100vh - 56px)', background: 'var(--color-gray-50)' }}
     >
-      <ActionSidebar onEnd={doSave} />
+      <ActionSidebar onEnd={doSave} listRecordId={listRecordId} leads={leads} />
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <SyncBanner status={syncStatus} error={syncError} onRetry={doSave} />

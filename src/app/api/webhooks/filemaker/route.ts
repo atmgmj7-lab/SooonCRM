@@ -3,6 +3,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { mapFMListToSupabase } from '@/lib/filemaker/mappers'
 
 export async function POST(request: Request) {
+  // FM Webhook 認証チェック
+  const secret = request.headers.get('x-fm-secret')
+  if (process.env.FM_WEBHOOK_SECRET && secret !== process.env.FM_WEBHOOK_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   let body: Record<string, unknown>
   try {
     body = await request.json()
@@ -29,16 +35,26 @@ export async function POST(request: Request) {
   const mapped = mapFMListToSupabase(fmFields)
   const supabase = createAdminClient()
 
+  const { data: existing } = await supabase
+    .from('list_records')
+    .select('id')
+    .eq('fm_record_id', fmRecordId)
+    .maybeSingle()
+
+  if (!existing) {
+    console.log('[fm-webhook] fm_record_id not found, skipping:', fmRecordId)
+    return NextResponse.json({ ok: true, skipped: true })
+  }
+
   const { error } = await supabase
     .from('list_records')
     .update({ ...mapped, updated_at: new Date().toISOString() })
-    .eq('fm_record_id', fmRecordId)
+    .eq('id', existing.id)
 
   if (error) {
     console.error('[fm-webhook] supabase update error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  console.log('[fm-webhook] updated list_record for fm_record_id:', fmRecordId)
   return NextResponse.json({ ok: true })
 }
