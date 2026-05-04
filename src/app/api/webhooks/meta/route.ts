@@ -50,6 +50,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
+  // [LOG 1] 受信 raw ペイロード
+  console.log('[meta-webhook] ▶ POST受信:', new Date().toISOString())
+  console.log('[meta-webhook] raw payload:', JSON.stringify(body, null, 2))
+
   const tenantId = process.env.DEFAULT_TENANT_ID
   if (!tenantId) {
     return NextResponse.json({ error: 'DEFAULT_TENANT_ID not set' }, { status: 500 })
@@ -70,6 +74,11 @@ export async function POST(request: Request) {
         const rawPhone = value.phone_number ?? value['電話番号'] ?? value.phone ?? mappedData.phone_number ?? ''
         const phoneNormalized = normalizePhoneNumber(String(rawPhone))
 
+        // [LOG 2] 整形・正規化後のデータ
+        console.log('[meta-webhook] leadgen_id:', leadId)
+        console.log('[meta-webhook] mappedData:', JSON.stringify(mappedData, null, 2))
+        console.log('[meta-webhook] rawPhone:', rawPhone, '→ normalized:', phoneNormalized)
+
         const { data: matched } = phoneNormalized
           ? await supabase
               .from('list_records')
@@ -80,8 +89,6 @@ export async function POST(request: Request) {
               .maybeSingle()
           : { data: null }
 
-        const matchStatus = phoneNormalized ? (matched ? 'matched' : 'unmatched') : 'pending'
-
         const { data: insertedLead, error: insertError } = await supabase
           .from('webhook_leads')
           .insert({
@@ -91,7 +98,6 @@ export async function POST(request: Request) {
             source: 'meta_ads',
             ad_name: (value.ad_name as string) ?? mappedData.ad_name ?? null,
             phone_normalized: phoneNormalized || null,
-            match_status: matchStatus,
             ...(matched
               ? {
                   status: 'added',
@@ -110,6 +116,12 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: insertError.message }, { status: 500 })
         }
 
+        // [LOG 3] DB保存・名寄せ結果
+        console.log('[meta-webhook] webhook_lead saved:', insertedLead?.id)
+        console.log('[meta-webhook] 名寄せ結果:', matched
+          ? `✅ matched list_record_id=${matched.id} customer_id=${matched.customer_id}`
+          : `❌ unmatched (phone=${phoneNormalized})`)
+
         if (matched && insertedLead) {
           const { error: listUpdateError } = await supabase
             .from('list_records')
@@ -121,25 +133,27 @@ export async function POST(request: Request) {
           }
         }
 
-        // leadsにも登録（問い合わせ履歴として記録）
+        // leadsにも登録（名寄せ成功時のみ：customer_idが必須のため）
         const now = new Date().toISOString()
-        const today = now.slice(0, 10)
-        const { error: leadInsertError } = await supabase
-          .from('leads')
-          .insert({
-            tenant_id:           tenantId,
-            list_record_id:      matched?.id ?? null,
-            ad_name:             (value.ad_name as string) ?? mappedData.ad_name ?? null,
-            company_name:        mappedData.company_name ?? null,
-            representative_name: mappedData.full_name ?? mappedData.representative_name ?? null,
-            phone_number:        phoneNormalized || null,
-            inquiry_date:        today,
-            inquiry_at:          now,
-            source_data:         value,
-          })
+        if (matched?.customer_id && insertedLead) {
+          const { error: leadInsertError } = await supabase
+            .from('leads')
+            .insert({
+              tenant_id:   tenantId,
+              customer_id: matched.customer_id,
+              ad_name:     (value.ad_name as string) ?? mappedData.ad_name ?? null,
+              inquiry_at:  now,
+              source:      'meta_ads',
+              source_data: value,
+            })
 
-        if (leadInsertError) {
-          console.error('[meta-webhook] leads insert error:', leadInsertError.message)
+          if (leadInsertError) {
+            console.error('[meta-webhook] leads insert error:', leadInsertError.message, leadInsertError)
+          } else {
+            console.log('[meta-webhook] leads INSERT 成功: customer_id=', matched.customer_id)
+          }
+        } else {
+          console.log('[meta-webhook] leads INSERT スキップ: 名寄せ未マッチ (phone=', phoneNormalized, ')')
         }
 
         saved += 1

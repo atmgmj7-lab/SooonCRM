@@ -132,3 +132,27 @@ export async function fmLogout() {
   })
   _token = null
 }
+
+export async function fmUpdateRecord(
+  layout: string,
+  recordId: string,
+  fieldData: Record<string, unknown>
+): Promise<void> {
+  const token = await getFMToken()
+  const res = await fetch(
+    `${getBaseUrl()}/layouts/${encodeURIComponent(layout)}/records/${recordId}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ fieldData }),
+    }
+  )
+  if (res.status === 401) {
+    _token = null
+    return fmUpdateRecord(layout, recordId, fieldData)
+  }
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`FM updateRecord failed: ${res.status} ${body}`)
+  }
+}
