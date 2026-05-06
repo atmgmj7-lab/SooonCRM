@@ -28,6 +28,11 @@ export type Lead = {
   list_record_id: string | null
   status: string | null
   newcomer_flag: string | null
+  // アポOK内訳（追加）
+  appo_detail_status?: string | null
+  appo_date?: string | null
+  appo_time?: string | null
+  appo_detail?: string | null
   imported_from_csv: boolean
   csv_row_number: number | null
   created_at: string
@@ -49,6 +54,10 @@ export type LeadManualFields = Pick<
   | 'contract_months'
   | 'total_revenue'
   | 'list_record_id'
+  | 'appo_detail_status'
+  | 'appo_date'
+  | 'appo_time'
+  | 'appo_detail'
 >
 
 export const MANUAL_LEAD_FIELDS: (keyof LeadManualFields)[] = [
@@ -66,6 +75,10 @@ export const MANUAL_LEAD_FIELDS: (keyof LeadManualFields)[] = [
   'contract_months',
   'total_revenue',
   'list_record_id',
+  'appo_detail_status',
+  'appo_date',
+  'appo_time',
+  'appo_detail',
 ]
 
 export const LAST_CALL_RESULT_OPTIONS = [

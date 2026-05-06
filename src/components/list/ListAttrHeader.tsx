@@ -35,7 +35,7 @@ export function ListAttrHeader({
   return (
     <div
       className="flex items-center gap-6 px-4 py-2 shrink-0 border-b overflow-x-auto"
-      style={{ background: 'var(--color-gray-100)', borderColor: 'var(--color-gray-200)' }}
+      style={{ background: 'var(--color-white)', borderColor: 'var(--color-gray-200)' }}
     >
       <AttrCell label="顧客ID" value={record.customer_id as string} />
       <AttrCell label="リスト譲渡日" value={record.list_handover_date as string} />

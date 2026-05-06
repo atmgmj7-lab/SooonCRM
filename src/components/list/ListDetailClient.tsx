@@ -32,6 +32,11 @@ type Lead = {
   order_closed: boolean | null
   jitsuyo_ok: boolean | null
   total_revenue: number | null
+  // アポOK内訳（追加）
+  appo_detail_status?: string | null
+  appo_date?: string | null
+  appo_time?: string | null
+  appo_detail?: string | null
 }
 
 type SyncStatus = 'idle' | 'saving' | 'error' | 'done'
@@ -185,6 +190,37 @@ export function ListDetailClient({
     }
   }, [primaryLead])
 
+  const patchPrimaryLeadAppo = useCallback(
+    async (patch: Record<string, string>) => {
+      if (!primaryLead) return
+      setSyncStatus('saving')
+      setSyncError(null)
+      try {
+        const res = await fetch(`/api/leads/${primaryLead.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({})) as { error?: string }
+          throw new Error(body.error ?? `status ${res.status}`)
+        }
+        setLeadsLocal((prev) =>
+          prev.map((l) => (l.id === primaryLead.id ? { ...l, ...patch } : l)),
+        )
+        setSyncStatus('done')
+        setTimeout(() => setSyncStatus('idle'), 3000)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        setSyncError(msg)
+        setSyncStatus('error')
+        setToast(`保存失敗: ${msg}`)
+        throw err
+      }
+    },
+    [primaryLead],
+  )
+
   const doSaveMemo = useCallback(async () => {
     const currentMemo = memoRef.current
     if (currentMemo === ((initialRecord.case_memo as string) ?? '')) return
@@ -200,26 +236,35 @@ export function ListDetailClient({
 
   return (
     <div
-      className="-m-8"
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: 'calc(100vh - 56px)',
+        height: '100%',
+        width: '100%',
+        minHeight: 0,
+        marginTop: 0,
+        paddingTop: 0,
         overflow: 'hidden',
         background: 'var(--color-gray-50)',
       }}
     >
       <div
         className="flex min-h-0"
-        style={{ flex: 1, overflow: 'hidden' }}
+        style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}
       >
         <ActionSidebar onEnd={doSaveMemo} listRecordId={listRecordId} leads={leadsLocal} />
 
         <div
           className="flex flex-col min-w-0 min-h-0"
-          style={{ flex: 1, overflow: 'hidden' }}
+          style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}
         >
-          <div style={{ flexShrink: 0 }}>
+          <div
+            style={{
+              flexShrink: 0,
+              background: 'var(--color-white)',
+              borderBottom: '1px solid var(--color-gray-200)',
+            }}
+          >
             <SyncBanner status={syncStatus} error={syncError} onRetry={() => setSyncStatus('idle')} />
             <ListAttrHeader
               record={record}
@@ -233,6 +278,8 @@ export function ListDetailClient({
                 )
               }}
             />
+          </div>
+          <div style={{ flexShrink: 0 }}>
             <ListMainDetail
               record={record}
               disabled={isLocked}
@@ -240,12 +287,19 @@ export function ListDetailClient({
               primaryLeadId={primaryLead?.id ?? null}
               leadNewcomerFlag={primaryLead?.newcomer_flag ?? ''}
               onSaveLeadNewcomer={saveLeadNewcomer}
+              appoLead={primaryLead}
+              onPatchAppoLead={patchPrimaryLeadAppo}
             />
           </div>
 
           <div
-            className="flex gap-2 p-2 min-h-0"
-            style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}
+            className="flex gap-2 min-h-0"
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              minHeight: 0,
+              padding: '16px 24px 40px',
+            }}
           >
             <div
               className="min-h-0 min-w-0"
@@ -259,7 +313,7 @@ export function ListDetailClient({
                 width: '34%',
                 flexShrink: 0,
                 position: 'sticky',
-                top: 16,
+                top: 0,
                 alignSelf: 'flex-start',
                 maxHeight: '100%',
               }}

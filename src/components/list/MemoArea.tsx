@@ -40,12 +40,14 @@ export function MemoArea({
         onChange={(e) => onChange?.(e.target.value)}
         disabled={disabled}
         placeholder="メモを入力..."
-        className="flex-1 w-full px-3 py-2 text-[11px] resize-none outline-none"
+        className="flex-1 w-full px-3 py-2 text-[11px] outline-none"
         style={{
           color: 'var(--color-gray-900)',
           fontFamily: 'inherit',
           cursor: disabled ? 'not-allowed' : 'text',
           opacity: disabled ? 0.7 : 1,
+          minHeight: 200,
+          resize: 'vertical',
         }}
       />
     </div>

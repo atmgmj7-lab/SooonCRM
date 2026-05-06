@@ -403,6 +403,16 @@ interface Props {
   primaryLeadId: string | null
   leadNewcomerFlag: string
   onSaveLeadNewcomer: (value: string) => Promise<void>
+  appoLead: {
+    id: string
+    status: string | null
+    last_call_result: string | null
+    appo_detail_status?: string | null
+    appo_date?: string | null
+    appo_time?: string | null
+    appo_detail?: string | null
+  } | null
+  onPatchAppoLead: (patch: Record<string, string>) => Promise<void>
 }
 
 const HP_OPTIONS = ['あり', 'なし', '不明']
@@ -414,6 +424,8 @@ export function ListMainDetail({
   primaryLeadId,
   leadNewcomerFlag,
   onSaveLeadNewcomer,
+  appoLead,
+  onPatchAppoLead,
 }: Props) {
   const phones = (record.phone_numbers as string[] | null) ?? []
 
@@ -499,6 +511,130 @@ export function ListMainDetail({
             disabled={disabled} onSave={(v) => onSave('meeting_time', v)} />
         </GridRow>
       </Section>
+
+      {['アポOK', '調整中', '採用OK', '採用NG', '受注'].includes(appoLead?.status ?? '') && appoLead && (
+        <section
+          style={{
+            background: '#fff',
+            border: '1px solid #D1FAE5',
+            borderRadius: 10,
+            padding: '14px 20px',
+            marginBottom: 16,
+          }}
+        >
+          <h3
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#065F46',
+              marginBottom: 14,
+              borderBottom: '1px solid #D1FAE5',
+              paddingBottom: 8,
+            }}
+          >
+            アポOK 内訳
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label
+                style={{ fontSize: 11, color: '#9CA3AF', display: 'block', marginBottom: 4 }}
+              >
+                アポ内訳ステータス
+              </label>
+              <select
+                value={appoLead.appo_detail_status ?? ''}
+                disabled={disabled}
+                onChange={async (e) => {
+                  await onPatchAppoLead({ appo_detail_status: e.target.value })
+                }}
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: 6,
+                  fontSize: 13,
+                }}
+              >
+                <option value="">選択してください</option>
+                <option value="調整中">調整中（商談日程調整中）</option>
+                <option value="採用OK">採用OK（商談着座済み）</option>
+                <option value="採用NG">採用NG（商談後NG）</option>
+                <option value="受注">受注（契約済み）</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                style={{ fontSize: 11, color: '#9CA3AF', display: 'block', marginBottom: 4 }}
+              >
+                商談日
+              </label>
+              <input
+                type="date"
+                defaultValue={appoLead.appo_date ?? ''}
+                disabled={disabled}
+                onBlur={async (e) => {
+                  await onPatchAppoLead({ appo_date: e.target.value })
+                }}
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: 6,
+                  fontSize: 13,
+                }}
+              />
+            </div>
+
+            <div>
+              <label
+                style={{ fontSize: 11, color: '#9CA3AF', display: 'block', marginBottom: 4 }}
+              >
+                商談時刻
+              </label>
+              <input
+                type="time"
+                defaultValue={appoLead.appo_time ?? ''}
+                disabled={disabled}
+                onBlur={async (e) => {
+                  await onPatchAppoLead({ appo_time: e.target.value })
+                }}
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: 6,
+                  fontSize: 13,
+                }}
+              />
+            </div>
+
+            <div style={{ gridColumn: 'span 2' }}>
+              <label
+                style={{ fontSize: 11, color: '#9CA3AF', display: 'block', marginBottom: 4 }}
+              >
+                アポ詳細・備考
+              </label>
+              <textarea
+                defaultValue={appoLead.appo_detail ?? ''}
+                disabled={disabled}
+                onBlur={async (e) => {
+                  await onPatchAppoLead({ appo_detail: e.target.value })
+                }}
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  resize: 'vertical',
+                }}
+              />
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   )
 }
