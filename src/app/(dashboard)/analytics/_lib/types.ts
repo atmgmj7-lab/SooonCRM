@@ -5,6 +5,10 @@ export type LeadRow = {
   status: string
   last_call_result: string | null
   inquiry_at: string
+  appo_detail_status?: string | null
+  appo_date?: string | null
+  appo_time?: string | null
+  appo_detail?: string | null
   list_created_at?: string | null  // FM同期リードの問い合わせ日補完用
   jitsuyo_ok: boolean | null
   ichiyou_ng: boolean | null

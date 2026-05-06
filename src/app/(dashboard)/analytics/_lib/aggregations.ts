@@ -31,12 +31,14 @@ export const MIKANRYO_STATUSES = [
   '見込みC',
 ]
 
-// アポOK（内訳は現時点ではDBに存在しないため単体のみ）
+// アポOK（内訳は appo_detail_status）
 export const APPO_STATUSES = ['アポOK']
 
-// 着座・受注（現時点ではDBに存在しないため空 → 将来実装用に残す）
-export const CHAKUZA_STATUSES: string[] = []
-export const JUCHU_STATUSES: string[] = []
+// アポOK内訳（appo_detail_status カラムから集計）
+export const APPO_CHOSEI   = ['調整中']
+export const APPO_SAIYO_OK = ['採用OK']
+export const APPO_SAIYO_NG = ['採用NG']
+export const APPO_JUCHU    = ['受注']
 
 // NG系
 export const NG_STATUSES = ['NG']
@@ -55,6 +57,12 @@ const getStatus = (lead: LeadRow): string =>
 
 const countStatus = (leads: LeadRow[], statuses: string[]): number =>
   leads.filter((l) => statuses.includes(getStatus(l))).length
+
+/** appo_detail_status による内訳カウント */
+function countAppoDetail(leads: LeadRow[], codes: string[]): number {
+  return leads.filter((l) => codes.includes((l.appo_detail_status ?? '').trim())).length
+}
+
 
 function safeRate(num: number, den: number): number {
   return den > 0 ? (num / den) * 100 : 0
@@ -155,16 +163,16 @@ export function aggregateByAd(leads: LeadRow[]): AdSummaryRow[] {
     const totalLeads = group.length
 
     const appo      = countStatus(group, APPO_STATUSES)
-    const chakuza   = countStatus(group, CHAKUZA_STATUSES)
-    const juchu     = countStatus(group, JUCHU_STATUSES)
     const kanryo    = countStatus(group, KANRYO_STATUSES)
     const mikanryo  = countStatus(group, MIKANRYO_STATUSES)
     const ng        = countStatus(group, NG_STATUSES)
     const taishogai = countStatus(group, TAISHOGAI_STATUSES)
     const duplicateCount = countStatus(group, DUPLICATE_STATUSES)
-    const chosei    = 0
-    const saiyoOk   = 0
-    const saiyoNg   = 0
+    const chosei    = countAppoDetail(group, APPO_CHOSEI)
+    const saiyoOk   = countAppoDetail(group, APPO_SAIYO_OK)
+    const saiyoNg   = countAppoDetail(group, APPO_SAIYO_NG)
+    const juchuAd   = countAppoDetail(group, APPO_JUCHU)
+    const chakuza   = saiyoOk + juchuAd
     const rusu      = countStatus(group, ['留守'])
     const miCall    = countStatus(group, ['新規'])
     const mikomiA   = countStatus(group, ['見込みA'])
@@ -194,7 +202,7 @@ export function aggregateByAd(leads: LeadRow[]): AdSummaryRow[] {
       chosei,
       saiyoOk,
       saiyoNg,
-      juchu,
+      juchu: juchuAd,
       chakuza,
       ng,
       taishogai,
@@ -208,15 +216,15 @@ export function aggregateByAd(leads: LeadRow[]): AdSummaryRow[] {
       mikomiC,
       // 後方互換
       mikomi,
-      deals: juchu,
+      deals: juchuAd,
       // 率指標（ゼロ除算は null）
       appoRate:          pct(appo, totalLeads),
       appoRateKanryo:    pct(appo, kanryo),
       chakuzaRateList:   pct(chakuza, totalLeads),
       chakuzaRateAppo:   pct(chakuza, appo),
       chakuzaRateKanryo: pct(chakuza, kanryo),
-      juchuRateShodan:   pct(juchu, chakuza),
-      juchuRateList:     pct(juchu, totalLeads),
+      juchuRateShodan:   pct(juchuAd, chakuza),
+      juchuRateList:     pct(juchuAd, totalLeads),
       kanryoRate:        pct(kanryo, totalLeads),
       // 広告指標
       clicks:       hasClicks ? clicks      : null,
@@ -229,7 +237,7 @@ export function aggregateByAd(leads: LeadRow[]): AdSummaryRow[] {
       cpm:          hasAdSpend && hasImpr ? (adSpend / impressions) * 1000 : null,
       cpaPerAppo:   hasAdSpend && appo > 0 ? adSpend / appo : null,
       cpaPerChakuza: hasAdSpend && chakuza > 0 ? adSpend / chakuza : null,
-      cpo:          hasAdSpend && juchu > 0 ? adSpend / juchu : null,
+      cpo:          hasAdSpend && juchuAd > 0 ? adSpend / juchuAd : null,
       totalRevenue,
       cashflowRevenue,
       roasTotal:    hasAdSpend && totalRevenue > 0 ? (totalRevenue / adSpend) * 100 : null,
@@ -257,11 +265,12 @@ export function aggregateByMonth(leads: LeadRow[]): MonthlyRow[] {
     const leads    = group.length
     const appo     = countStatus(group, APPO_STATUSES)
     const kanryo   = countStatus(group, KANRYO_STATUSES)
-    const chakuza  = countStatus(group, CHAKUZA_STATUSES)
-    const juchu    = countStatus(group, JUCHU_STATUSES)
+    const chosei   = countAppoDetail(group, APPO_CHOSEI)
+    const saiyoOk  = countAppoDetail(group, APPO_SAIYO_OK)
+    const saiyoNg  = countAppoDetail(group, APPO_SAIYO_NG)
+    const juchuM   = countAppoDetail(group, APPO_JUCHU)
+    const chakuza  = saiyoOk + juchuM
     const ng       = countStatus(group, NG_STATUSES)
-    const saiyoOk  = 0
-    const saiyoNg  = 0
     const taishogai = countStatus(group, TAISHOGAI_STATUSES)
     const miCall   = countStatus(group, ['新規'])
     const rusu     = countStatus(group, ['留守'])
@@ -269,7 +278,6 @@ export function aggregateByMonth(leads: LeadRow[]): MonthlyRow[] {
     const mikomiB  = countStatus(group, ['見込みB'])
     const mikomiC  = countStatus(group, ['見込みC'])
     const mikanryo = countStatus(group, MIKANRYO_STATUSES)
-    const chosei   = 0
 
     rows.push({
       month,
@@ -278,7 +286,7 @@ export function aggregateByMonth(leads: LeadRow[]): MonthlyRow[] {
       chosei,
       saiyoOk,
       saiyoNg,
-      juchu,
+      juchu: juchuM,
       chakuza,
       ng,
       taishogai,
@@ -294,8 +302,8 @@ export function aggregateByMonth(leads: LeadRow[]): MonthlyRow[] {
       chakuzaRateList:   pct(chakuza, leads),
       chakuzaRateAppo:   pct(chakuza, appo),
       chakuzaRateKanryo: pct(chakuza, kanryo),
-      juchuRateShodan:   pct(juchu, chakuza),
-      juchuRateList:     pct(juchu, leads),
+      juchuRateShodan:   pct(juchuM, chakuza),
+      juchuRateList:     pct(juchuM, leads),
       kanryoRate:        pct(kanryo, leads),
     })
   }
@@ -332,8 +340,10 @@ export function aggregateByAdByMonth(leads: LeadRow[], adNames: string[]): Month
       const n       = group.length
       const appo    = countStatus(group, APPO_STATUSES)
       const kanryo  = countStatus(group, KANRYO_STATUSES)
-      const chakuza = countStatus(group, CHAKUZA_STATUSES)
-      const juchu   = countStatus(group, JUCHU_STATUSES)
+      const saiyoOkM = countAppoDetail(group, APPO_SAIYO_OK)
+      const juchuM2  = countAppoDetail(group, APPO_JUCHU)
+      const chakuza  = saiyoOkM + juchuM2
+      const juchu    = juchuM2
       const totalRevenue = group.reduce((s, l) => s + (l.deal_amount ?? 0), 0)
       const adSpend = group.reduce((s, l) => s + getAdSpend(l), 0)
 

@@ -1,8 +1,9 @@
 'use client'
+import { Fragment, useState } from 'react'
 import type { AdSummaryRow } from '../_lib/types'
 
-const APPO_TITLE =
-  'アポOK内訳（調整中/採用OK/採用NG/受注）はFM同期後に表示されます'
+const APPO_BREAKDOWN_HINT =
+  'クリックで内訳を表示（調整中 / 採用OK / 採用NG / 受注は appo_detail_status ベース）'
 
 function fmtRate(n: number | null | undefined) {
   if (n == null) return '-'
@@ -86,6 +87,17 @@ function Td({
 }
 
 export function AdSummaryTable({ data, onExport }: { data: AdSummaryRow[]; onExport?: () => void }) {
+  const [expandedApp, setExpandedApp] = useState<Set<string>>(() => new Set())
+
+  function toggleAppo(adName: string) {
+    setExpandedApp((prev) => {
+      const next = new Set(prev)
+      if (next.has(adName)) next.delete(adName)
+      else next.add(adName)
+      return next
+    })
+  }
+
   const sumN  = (k: keyof AdSummaryRow) => data.reduce((s, r) => s + ((r[k] as number) ?? 0), 0)
   const sumNullable = (k: keyof AdSummaryRow): number | null => {
     const vals = data.map((r) => r[k] as number | null).filter((v) => v != null)
@@ -153,7 +165,7 @@ export function AdSummaryTable({ data, onExport }: { data: AdSummaryRow[]; onExp
             </tr>
             <tr>
               <Th label="リスト数" right group />
-              <Th label="アポOK" right group bold tooltip={APPO_TITLE} />
+              <Th label="アポOK" right group bold tooltip={APPO_BREAKDOWN_HINT} />
               <Th label="NG" right group />
               <Th label="対象外" right group tooltip="対象外・ポータル・現アナ・重複を含む" />
               <Th label="重複" right group />
@@ -190,14 +202,40 @@ export function AdSummaryTable({ data, onExport }: { data: AdSummaryRow[]; onExp
               </tr>
             )}
             {data.map((row) => (
+              <Fragment key={row.adName}>
               <tr
-                key={row.adName}
                 onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-gray-50)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
                 <Td sticky>{row.adName}</Td>
                 <Td right>{fmtNum(row.leads)}</Td>
-                <Td right bold color={row.appo > 0 ? 'var(--color-success)' : undefined} title={APPO_TITLE}>{fmtNum(row.appo)}</Td>
+                <Td
+                  right
+                  bold
+                  color={row.appo > 0 ? 'var(--color-success)' : undefined}
+                  title={APPO_BREAKDOWN_HINT}
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleAppo(row.adName)
+                    }}
+                    className="tabular-nums w-full text-right underline-offset-2 hover:underline"
+                    style={{
+                      cursor: row.appo > 0 ? 'pointer' : 'default',
+                      color: row.appo > 0 ? 'var(--color-success)' : 'inherit',
+                      background: 'none',
+                      border: 'none',
+                      font: 'inherit',
+                      fontWeight: 700,
+                      padding: 0,
+                    }}
+                    aria-expanded={expandedApp.has(row.adName)}
+                  >
+                    {fmtNum(row.appo)}
+                  </button>
+                </Td>
                 <Td right>{fmtNum(row.ng)}</Td>
                 <Td right>{fmtNum(row.taishogai)}</Td>
                 <Td right>{fmtNum(row.duplicateCount)}</Td>
@@ -224,6 +262,28 @@ export function AdSummaryTable({ data, onExport }: { data: AdSummaryRow[]; onExp
                 <Td right bold color={row.roasTotal != null ? 'var(--color-success)' : undefined}>{fmtRate(row.roasTotal)}</Td>
                 <Td right color={row.roasCashflow != null ? 'var(--color-success)' : undefined}>{fmtRate(row.roasCashflow)}</Td>
               </tr>
+              {expandedApp.has(row.adName) && (
+                <tr style={{ background: 'var(--color-blue-light)' }}>
+                  <td
+                    colSpan={1 + listColCount + rateColCount + adColCount}
+                    style={{
+                      padding: '8px 12px',
+                      fontSize: 12,
+                      borderBottom: '1px solid var(--color-gray-200)',
+                      color: 'var(--color-gray-900)',
+                    }}
+                  >
+                    <span className="font-semibold" style={{ color: 'var(--color-blue)' }}>
+                      アポOK内訳
+                    </span>
+                    <span className="ml-6 tabular-nums">調整中: {fmtNum(row.chosei)}</span>
+                    <span className="ml-6 tabular-nums">採用OK: {fmtNum(row.saiyoOk)}</span>
+                    <span className="ml-6 tabular-nums">採用NG: {fmtNum(row.saiyoNg)}</span>
+                    <span className="ml-6 tabular-nums">受注: {fmtNum(row.juchu)}</span>
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))}
             {/* 合計行 */}
             {data.length > 0 && (

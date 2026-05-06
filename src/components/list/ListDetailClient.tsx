@@ -37,6 +37,7 @@ type Lead = {
   appo_date?: string | null
   appo_time?: string | null
   appo_detail?: string | null
+  source_data?: Record<string, unknown> | null
 }
 
 type SyncStatus = 'idle' | 'saving' | 'error' | 'done'

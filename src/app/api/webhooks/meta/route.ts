@@ -24,6 +24,39 @@ export async function GET(request: Request) {
 
 type FieldData = { name: string; values: string[] }
 
+/** Meta Webhook（leadgen 等）から field_data 配列を取り出す */
+function extractFieldDataFromMetaBody(body: Record<string, unknown>): FieldData[] {
+  const entry = (body.entry as Array<Record<string, unknown>>)?.[0]
+  const change = (entry?.changes as Array<Record<string, unknown>>)?.[0]
+  const value = change?.value as Record<string, unknown> | undefined
+  if (value?.field_data && Array.isArray(value.field_data)) {
+    return value.field_data as FieldData[]
+  }
+  if (body.field_data && Array.isArray(body.field_data)) {
+    return body.field_data as FieldData[]
+  }
+  return []
+}
+
+/** field_data を source_data.form_answers 用にフラット化 */
+function extractFormAnswers(fieldData: FieldData[]): Record<string, string> {
+  const answers: Record<string, string> = {}
+  for (const field of fieldData) {
+    if (field.name && field.values?.[0]) {
+      answers[field.name] = field.values[0]
+    }
+  }
+  return answers
+}
+
+function buildLeadSourceData(body: Record<string, unknown>): Record<string, unknown> {
+  const formAnswers = extractFormAnswers(extractFieldDataFromMetaBody(body))
+  return {
+    ...body,
+    form_answers: formAnswers,
+  }
+}
+
 function extractLeadData(body: Record<string, unknown>) {
   const entry  = (body.entry as Array<Record<string, unknown>>)?.[0]
   const change = (entry?.changes as Array<Record<string, unknown>>)?.[0]
@@ -192,7 +225,7 @@ export async function POST(request: Request) {
       ad_name:             leadData.ad_name || null,
       inquiry_at:          now,
       source:              'meta_ads',
-      source_data:         body,
+      source_data:         buildLeadSourceData(body),
       status:              '未対応',
       webhook_lead_id:     webhookLead.id,
       company_name:        leadData.company_name || null,

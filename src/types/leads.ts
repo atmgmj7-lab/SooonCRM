@@ -1,6 +1,16 @@
 export type Lead = {
   id: string
   tenant_id: string
+  /** Meta Webhook・CSV等で流入した詳細JSON（form_answers など） */
+  source_data?: {
+    form_answers?: Record<string, string>
+    company_name?: string | null
+    representative_name?: string | null
+    phone_numbers?: string[]
+    phone_number?: string | null
+    prefecture?: string | null
+    [key: string]: unknown
+  } | null
   inquiry_date: string | null
   ad_name: string | null
   adset_id: string | null

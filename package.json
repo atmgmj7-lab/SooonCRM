@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build --webpack && node scripts/fix-nft.js",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "reimport-leads": "tsx src/scripts/reimport-leads.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.71",
@@ -32,6 +33,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "csv-parse": "^5.6.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "supabase": "^2.95.3",

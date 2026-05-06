@@ -411,6 +411,7 @@ interface Props {
     appo_date?: string | null
     appo_time?: string | null
     appo_detail?: string | null
+    source_data?: Record<string, unknown> | null
   } | null
   onPatchAppoLead: (patch: Record<string, string>) => Promise<void>
 }
@@ -511,6 +512,76 @@ export function ListMainDetail({
             disabled={disabled} onSave={(v) => onSave('meeting_time', v)} />
         </GridRow>
       </Section>
+
+      {(function () {
+        const raw = appoLead?.source_data?.form_answers
+        const formAnswers =
+          raw &&
+          typeof raw === 'object' &&
+          raw !== null &&
+          Object.keys(raw as Record<string, unknown>).length > 0
+            ? (raw as Record<string, string>)
+            : null
+        return formAnswers ? (
+          <section
+            style={{
+              background: 'var(--color-white)',
+              border: '1px solid var(--color-blue-light)',
+              borderRadius: 10,
+              padding: '14px 20px',
+              marginBottom: 16,
+            }}
+          >
+            <h3
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--color-blue)',
+                marginBottom: 14,
+                borderBottom: '1px solid var(--color-blue-light)',
+                paddingBottom: 8,
+              }}
+            >
+              📋 インスタントフォーム回答
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {Object.entries(formAnswers).map(([question, answer]) => (
+                <div
+                  key={question}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1.5fr',
+                    gap: 12,
+                    paddingBottom: 8,
+                    borderBottom: '1px solid var(--color-gray-100)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 11.5,
+                      color: 'var(--color-gray-600)',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {question}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: 'var(--color-gray-900)',
+                      fontWeight: 600,
+                    }}
+                    className="tabular-nums"
+                  >
+                    {String(answer)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null
+      })()}
+
 
       {['アポOK', '調整中', '採用OK', '採用NG', '受注'].includes(appoLead?.status ?? '') && appoLead && (
         <section
