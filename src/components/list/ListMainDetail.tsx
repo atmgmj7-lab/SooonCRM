@@ -513,6 +513,56 @@ export function ListMainDetail({
         </GridRow>
       </Section>
 
+      {(record['chosei'] === true ||
+        record['saiyo_ok'] === true ||
+        record['saiyo_ng'] === true ||
+        record['juchu'] === true) && (
+        <section
+          style={{
+            background: '#fff',
+            border: '1px solid #D1FAE5',
+            borderRadius: 10,
+            padding: '14px 20px',
+            marginBottom: 16,
+          }}
+        >
+          <h3
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#065F46',
+              marginBottom: 12,
+              borderBottom: '1px solid #D1FAE5',
+              paddingBottom: 8,
+            }}
+          >
+            アポOK 内訳
+          </h3>
+          <div style={{ display: 'flex', gap: 24 }}>
+            {[
+              { label: '調整中', value: record['chosei'] === true, color: '#0D9488' },
+              { label: '採用OK', value: record['saiyo_ok'] === true, color: '#1D4ED8' },
+              { label: '採用NG', value: record['saiyo_ng'] === true, color: '#DC2626' },
+              { label: '受注', value: record['juchu'] === true, color: '#15803D' },
+            ].map((item) => (
+              <div key={item.label} style={{ textAlign: 'center' }}>
+                <div
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: item.value ? item.color : '#E5E7EB',
+                  }}
+                >
+                  {item.value ? '✓' : '—'}
+                </div>
+                <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+
       {(function () {
         const raw = appoLead?.source_data?.form_answers
         const formAnswers =

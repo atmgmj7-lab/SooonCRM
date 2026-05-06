@@ -48,6 +48,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from('list_records')
+    // 全列取得: chosei / saiyo_ok / saiyo_ng / juchu（アポOK内訳）を含む
     .select('*', { count: 'exact' })
     .eq('tenant_id', tenantId)
     .not('company_name', 'is', null)

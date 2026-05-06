@@ -1,5 +1,4 @@
 import { Sidebar } from '@/components/layout/sidebar'
-import { Header } from '@/components/layout/header'
 
 export default function DashboardLayout({
   children,
@@ -11,22 +10,24 @@ export default function DashboardLayout({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 0,
         height: '100vh',
         overflow: 'hidden',
       }}
     >
-      <Header />
-      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', gap: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden',
+        }}
+      >
         <Sidebar />
         <main
           style={{
             flex: 1,
             minHeight: 0,
-            boxSizing: 'border-box',
             overflow: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
             margin: 0,
             padding: 0,
           }}
