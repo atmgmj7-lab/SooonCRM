@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ActionSidebar } from './ActionSidebar'
 import { ListAttrHeader } from './ListAttrHeader'
@@ -25,6 +25,7 @@ type Call = {
 type Lead = {
   id: string
   inquiry_date: string | null
+  inquiry_at: string | null
   ad_name: string | null
   status: string | null
   newcomer_flag: string | null
@@ -104,6 +105,9 @@ export function ListDetailClient({
 
   const [record, setRecord] = useState<Record<string, unknown>>(initialRecord)
   const [leadsLocal, setLeadsLocal] = useState<Lead[]>(leads)
+  const [selectedLeadId, setSelectedLeadId] = useState<string>(
+    () => (initialRecord.selected_lead_id as string | null | undefined) ?? '',
+  )
   const [memo, setMemo] = useState<string>((initialRecord.case_memo as string) ?? '')
   const memoRef = useRef(memo)
   memoRef.current = memo
@@ -115,6 +119,11 @@ export function ListDetailClient({
   const mySessionId = useRef(crypto.randomUUID())
 
   useEffect(() => { setLeadsLocal(leads) }, [leads])
+
+  useEffect(() => {
+    const sid = (initialRecord.selected_lead_id as string | null | undefined) ?? ''
+    setSelectedLeadId(sid)
+  }, [initialRecord.selected_lead_id])
 
   useEffect(() => {
     const supabase  = createClient()
@@ -136,7 +145,13 @@ export function ListDetailClient({
   const isLocked = otherUsers.length > 0
   const lockedBy = otherUsers[0]?.name ?? null
 
-  const primaryLead = leadsLocal[0] ?? null
+  const primaryLead = useMemo(() => {
+    if (selectedLeadId) {
+      const hit = leadsLocal.find((l) => l.id === selectedLeadId)
+      if (hit) return hit
+    }
+    return leadsLocal[0] ?? null
+  }, [leadsLocal, selectedLeadId])
 
   const saveField = useCallback(async (key: string, value: unknown) => {
     setSyncStatus('saving')
@@ -267,6 +282,60 @@ export function ListDetailClient({
             }}
           >
             <SyncBanner status={syncStatus} error={syncError} onRetry={() => setSyncStatus('idle')} />
+            {leadsLocal.length > 1 && (
+              <div
+                style={{
+                  background: '#FFFBEB',
+                  border: '1px solid #FDE68A',
+                  borderRadius: 8,
+                  padding: '10px 16px',
+                  marginBottom: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span style={{ fontSize: 12, color: '#92400E', fontWeight: 600 }}>
+                  このリストには {leadsLocal.length} 件のリードが紐づいています
+                </span>
+                <select
+                  value={selectedLeadId}
+                  onChange={async (e) => {
+                    const leadId = e.target.value
+                    setSelectedLeadId(leadId)
+                    const res = await fetch(`/api/list-records/${listRecordId}/selected-lead`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ selected_lead_id: leadId || null }),
+                    })
+                    if (!res.ok) {
+                      const body = await res.json().catch(() => ({})) as { error?: string }
+                      setToast(`リード選択の保存に失敗: ${body.error ?? res.status}`)
+                      return
+                    }
+                    setRecord((prev) => ({ ...prev, selected_lead_id: leadId || null }))
+                  }}
+                  style={{
+                    fontSize: 12,
+                    border: '1px solid #FDE68A',
+                    borderRadius: 6,
+                    padding: '4px 8px',
+                    background: '#fff',
+                  }}
+                >
+                  <option value="">リードを選択...</option>
+                  {leadsLocal.map((lead) => (
+                    <option key={lead.id} value={lead.id}>
+                      {lead.ad_name ?? '広告名なし'} — {(lead.inquiry_at ?? lead.inquiry_date)?.slice(0, 10) ?? '日付なし'}
+                    </option>
+                  ))}
+                </select>
+                <span style={{ fontSize: 11, color: '#9CA3AF' }}>
+                  選択したリードにアポOK内訳が反映されます
+                </span>
+              </div>
+            )}
             <ListAttrHeader
               record={record}
               statusLead={statusLead}

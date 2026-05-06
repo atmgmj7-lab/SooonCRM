@@ -58,6 +58,30 @@ export async function GET(request: Request) {
   const { data: leads, count, error } = await mainQuery
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  let appoDetailFilledQuery = supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', TENANT_ID)
+    .not('appo_detail_status', 'is', null)
+    .or('phone_number.not.is.null,company_name.not.is.null,representative_name.not.is.null,ad_name.not.is.null')
+
+  if (q)                       appoDetailFilledQuery = appoDetailFilledQuery.or(`company_name.ilike.%${q}%,representative_name.ilike.%${q}%,phone_number.ilike.%${q}%`)
+  if (ad_name)                 appoDetailFilledQuery = appoDetailFilledQuery.ilike('ad_name', `%${ad_name}%`)
+  if (status)                  appoDetailFilledQuery = appoDetailFilledQuery.eq('status', status)
+  if (result)                  appoDetailFilledQuery = appoDetailFilledQuery.eq('last_call_result', result)
+  if (order_closed === 'true') appoDetailFilledQuery = appoDetailFilledQuery.eq('order_closed', true)
+  if (from)                    appoDetailFilledQuery = appoDetailFilledQuery.gte('inquiry_at', from)
+  if (to)                      appoDetailFilledQuery = appoDetailFilledQuery.lte('inquiry_at', to + 'T23:59:59Z')
+  if (since)                   appoDetailFilledQuery = appoDetailFilledQuery.gte('inquiry_date', since)
+  if (until)                   appoDetailFilledQuery = appoDetailFilledQuery.lte('inquiry_date', until)
+  if (tab === 'new')             appoDetailFilledQuery = appoDetailFilledQuery.eq('status', '新規')
+  if (tab === 'done')            appoDetailFilledQuery = appoDetailFilledQuery.neq('status', '新規')
+
+  const { count: appoDetailFilledTotal, error: appoDetailCountError } = await appoDetailFilledQuery
+  if (appoDetailCountError) {
+    console.error('[leads GET] appo_detail count error:', appoDetailCountError)
+  }
+
   // summaryクエリ（同じフィルタ条件・ページネーションなし）
   let summaryQuery = supabase
     .from('leads')
@@ -115,5 +139,6 @@ export async function GET(request: Request) {
     total:   count ?? 0,
     hasMore: (count ?? 0) > pageNum * limitNum,
     newLeadCount: newLeadCount ?? 0,
+    appoDetailFilledTotal: appoDetailFilledTotal ?? 0,
   })
 }

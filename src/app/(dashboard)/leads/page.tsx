@@ -16,6 +16,7 @@ type Lead = {
   phone_number: string | null
   status: string | null
   last_call_result: string | null
+  appo_detail_status: string | null
 }
 
 type TabKey = 'all' | 'new' | 'done'
@@ -108,6 +109,7 @@ export default function LeadsPage() {
   const [hasMore, setHasMore] = useState(false)
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<TabKey>('all')
+  const [appoDetailFilledTotal, setAppoDetailFilledTotal] = useState<number | null>(null)
 
   const buildUrl = useCallback((qStr: string, tabKey: TabKey, p: number) => {
     const params = new URLSearchParams({ page: String(p), tab: tabKey })
@@ -124,9 +126,11 @@ export default function LeadsPage() {
         total: number
         hasMore: boolean
         newLeadCount?: number
+        appoDetailFilledTotal?: number
       }
       setLeads(json.leads ?? [])
       setTotal(json.total ?? 0)
+      setAppoDetailFilledTotal(json.appoDetailFilledTotal ?? null)
       setHasMore(json.hasMore ?? false)
       setNewLeadCount(json.newLeadCount ?? 0)
       setPage(1)
@@ -147,7 +151,7 @@ export default function LeadsPage() {
   }
 
   const w = COL_WIDTHS
-  const colCount = Object.keys(COL_WIDTHS).length
+  const colCount = Object.keys(COL_WIDTHS).length + 1
 
   return (
     <div className="p-6" style={{ background: 'var(--color-gray-50)', minHeight: '100%' }}>
@@ -158,6 +162,9 @@ export default function LeadsPage() {
           </h1>
           <p className="text-[12px] mt-0.5 tabular-nums" style={{ color: 'var(--color-gray-400)' }}>
             {total.toLocaleString()} 件
+            {appoDetailFilledTotal != null && (
+              <> · アポOK内訳あり {appoDetailFilledTotal.toLocaleString()} 件</>
+            )}
           </p>
         </div>
       </div>
@@ -218,6 +225,17 @@ export default function LeadsPage() {
               <Th label="電話番号" w={w.phone_number} />
               <Th label="経過日数" w={w.elapsed} />
               <Th label="対応" w={w.status} />
+              <th
+                style={{
+                  padding: '8px 12px',
+                  fontSize: 11,
+                  color: '#6B7280',
+                  whiteSpace: 'nowrap',
+                  borderLeft: '2px solid #E5E7EB',
+                }}
+              >
+                アポOK内訳
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -271,6 +289,42 @@ export default function LeadsPage() {
                       )
                     }}
                   />
+                </td>
+                <td style={{ padding: '8px 12px', borderLeft: '2px solid #E5E7EB' }}>
+                  {lead.appo_detail_status ? (
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        background:
+                          lead.appo_detail_status === '受注'
+                            ? '#D1FAE5'
+                            : lead.appo_detail_status === '採用OK'
+                              ? '#DBEAFE'
+                              : lead.appo_detail_status === '採用NG'
+                                ? '#FEE2E2'
+                                : lead.appo_detail_status === '調整中'
+                                  ? '#FEF3C7'
+                                  : '#F3F4F6',
+                        color:
+                          lead.appo_detail_status === '受注'
+                            ? '#065F46'
+                            : lead.appo_detail_status === '採用OK'
+                              ? '#1E40AF'
+                              : lead.appo_detail_status === '採用NG'
+                                ? '#991B1B'
+                                : lead.appo_detail_status === '調整中'
+                                  ? '#92400E'
+                                  : '#6B7280',
+                      }}
+                    >
+                      {lead.appo_detail_status}
+                    </span>
+                  ) : (
+                    <span style={{ color: '#E5E7EB' }}>—</span>
+                  )}
                 </td>
               </tr>
             ))}
