@@ -74,7 +74,7 @@ export async function POST(request: Request) {
   const tenantId = member?.tenant_id ?? process.env.DEFAULT_TENANT_ID
   if (!tenantId) return NextResponse.json({ error: 'No tenant' }, { status: 403 })
 
-  let body: { list_record_id?: string; lead_id?: string | null; called_at?: string; agent_name?: string | null }
+  let body: { list_record_id?: string; agent_name?: string | null }
   try {
     body = await request.json()
   } catch {
@@ -85,15 +85,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'list_record_id is required' }, { status: 400 })
   }
 
+  const today = new Date().toISOString().slice(0, 10)
+
   const { data, error } = await supabase
     .from('calls')
     .insert({
-      tenant_id:      tenantId,
-      list_record_id: body.list_record_id,
-      lead_id:        body.lead_id ?? null,
-      called_at:      body.called_at ?? new Date().toISOString(),
-      agent_name:     body.agent_name ?? null,
-      call_result:    null,
+      tenant_id:       tenantId,
+      list_record_id:  body.list_record_id,
+      call_date:       today,
+      call_start_time: new Date().toTimeString().slice(0, 5),
+      agent_name:      body.agent_name ?? null,
+      call_result:     null,
     })
     .select()
     .single()

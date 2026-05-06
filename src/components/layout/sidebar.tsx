@@ -1,154 +1,170 @@
 'use client'
-
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard,
-  Bot,
-  Users,
-  ListChecks,
-  Phone,
-  Handshake,
-  Megaphone,
-  Settings,
-  ChevronDown,
-  ChevronRight,
+  LayoutDashboard, Megaphone, FileText, PhoneCall,
+  Handshake, Users, BarChart2, Bot, Settings,
+  PanelLeftClose, PanelLeftOpen, ListChecks,
 } from 'lucide-react'
-import { useState } from 'react'
 
-type NavItem = {
-  label: string
-  href?: string
-  icon?: React.ReactNode
-  children?: { label: string; href: string }[]
-}
+type NavItem =
+  | { href: string; label: string; icon: React.ElementType; accent?: boolean }
+  | { divider: true }
 
-const navItems: NavItem[] = [
-  {
-    label: 'ダッシュボード',
-    icon: <LayoutDashboard size={15} />,
-    children: [
-      { label: 'KPIトップ', href: '/dashboard' },
-      { label: 'AIステータス', href: '/dashboard/ai-status' },
-    ],
-  },
-  {
-    label: '広告',
-    icon: <Megaphone size={15} />,
-    children: [
-      { label: '広告マネージャー', href: '/ads' },
-      { label: 'キャンペーン', href: '/ads/campaigns' },
-      { label: 'クリエイティブ', href: '/ads/creatives' },
-    ],
-  },
-  {
-    label: 'リスト',
-    icon: <ListChecks size={15} />,
-    children: [
-      { label: 'リード一覧', href: '/leads' },
-      { label: 'リスト情報', href: '/list' },
-      { label: 'コール履歴', href: '/calls' },
-    ],
-  },
-  {
-    label: '商談情報',
-    icon: <Handshake size={15} />,
-    href: '/deals',
-  },
-  {
-    label: 'AI',
-    icon: <Bot size={15} />,
-    children: [
-      { label: 'エージェント', href: '/ai/agents' },
-      { label: '指示一覧', href: '/ai/instructions' },
-    ],
-  },
-  {
-    label: '設定',
-    icon: <Settings size={15} />,
-    children: [
-      { label: '指標マスタ', href: '/settings/metrics' },
-      { label: 'ステータスマスタ', href: '/settings/statuses' },
-      { label: 'FMマッピング', href: '/settings/fm-mapping' },
-      { label: 'FM同期ログ', href: '/settings/fm-sync-log' },
-      { label: 'ユーザー', href: '/settings/users' },
-      { label: 'CSVインポート', href: '/admin/import-leads' },
-    ],
-  },
+const NAV_ITEMS: NavItem[] = [
+  { href: '/dashboard',  label: 'ダッシュボード',  icon: LayoutDashboard },
+  { href: '/ads',        label: '広告マネージャー', icon: Megaphone },
+  { href: '/leads',      label: 'リード管理',      icon: FileText },
+  { href: '/calls',      label: 'コール履歴',      icon: PhoneCall },
+  { href: '/list',       label: 'リスト情報',      icon: ListChecks },
+  { href: '/deals',      label: '商談データ',      icon: Handshake },
+  { href: '/customers',  label: '顧客データ',      icon: Users },
+  { href: '/analytics',  label: 'アナリティクス',  icon: BarChart2 },
+  { divider: true },
+  { href: '/ai/agents',  label: 'AIエージェント',  icon: Bot, accent: true },
+  { href: '/settings',   label: '設定',            icon: Settings },
 ]
 
-function NavGroup({ item }: { item: NavItem }) {
+export function Sidebar() {
   const pathname = usePathname()
-  const isChildActive = item.children?.some((c) => pathname.startsWith(c.href))
-  const [open, setOpen] = useState(isChildActive ?? true)
+  const [collapsed, setCollapsed] = useState(false)
 
-  if (item.href) {
-    const active = pathname === item.href
-    return (
-      <Link
-        href={item.href}
-        className={[
-          'flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] transition-colors duration-150',
-          active
-            ? 'bg-[var(--color-blue)] text-white'
-            : 'text-white/70 hover:text-white hover:bg-[var(--color-navy-mid)]',
-        ].join(' ')}
-      >
-        {item.icon}
-        {item.label}
-      </Link>
-    )
+  useEffect(() => {
+    if (localStorage.getItem('sidebar-collapsed') === 'true') setCollapsed(true)
+  }, [])
+
+  const toggle = () => {
+    setCollapsed((prev) => {
+      const next = !prev
+      localStorage.setItem('sidebar-collapsed', String(next))
+      return next
+    })
   }
 
   return (
-    <div>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] text-white/70 hover:text-white hover:bg-[var(--color-navy-mid)] transition-colors duration-150"
+    <aside
+      style={{
+        width: collapsed ? 52 : 200,
+        transition: 'width 200ms ease',
+        background: '#111827',
+        borderRight: '1px solid #1F2937',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        flexShrink: 0,
+        overflow: 'hidden',
+      }}
+    >
+      {/* ロゴ + トグルボタン */}
+      <div
+        style={{
+          padding: '10px 8px',
+          borderBottom: '1px solid #1F2937',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          gap: 6,
+          flexShrink: 0,
+        }}
       >
-        {item.icon}
-        <span className="flex-1 text-left">{item.label}</span>
-        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-      </button>
-      {open && item.children && (
-        <div className="ml-6 mt-0.5 flex flex-col gap-0.5">
-          {item.children.map((child) => {
-            const active = pathname === child.href || pathname.startsWith(child.href + '/')
-            return (
+        {/* ロゴアイコン: 常時表示 */}
+        <div
+          style={{
+            width: 26, height: 26, borderRadius: 6,
+            background: '#0D9488',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
+            <path d="M1.5 9L6 2.5l2.5 4 1.5-2.5 1.5 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        {/* ロゴテキスト: 展開時のみ */}
+        {!collapsed && (
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#F9FAFB', letterSpacing: '-.2px', flex: 1 }}>
+            GrowthHub
+          </span>
+        )}
+        {/* トグルボタン */}
+        <button
+          type="button"
+          onClick={toggle}
+          title={collapsed ? 'サイドバーを開く' : 'サイドバーを閉じる'}
+          style={{
+            width: 24, height: 24, borderRadius: 5,
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#6B7280', flexShrink: 0,
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,.08)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+        >
+          {collapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+        </button>
+      </div>
+
+      {/* ナビゲーション */}
+      <nav style={{ padding: '8px 6px', flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+        {NAV_ITEMS.map((item, i) => {
+          if ('divider' in item) {
+            return <div key={i} style={{ height: 1, background: '#1E293B', margin: '6px 0' }} />
+          }
+          const Icon = item.icon
+          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+          return (
+            <div key={item.href} style={{ position: 'relative' }} className="sidebar-nav-item-wrap">
               <Link
-                key={child.href}
-                href={child.href}
-                className={[
-                  'block px-3 py-1.5 rounded-md text-[12px] transition-colors duration-150',
-                  active
-                    ? 'text-white bg-[var(--color-navy-mid)]'
-                    : 'text-white/60 hover:text-white hover:bg-[var(--color-navy-mid)]',
-                ].join(' ')}
+                href={item.href}
+                title={collapsed ? item.label : undefined}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 9,
+                  padding: collapsed ? '8px 0' : '7px 10px',
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  borderRadius: 6,
+                  fontSize: 12.5,
+                  fontWeight: isActive ? 500 : 400,
+                  color: isActive ? '#2DD4BF' : item.accent ? '#0D9488' : '#94A3B8',
+                  background: isActive ? 'rgba(13,148,136,.2)' : 'transparent',
+                  textDecoration: 'none',
+                  transition: 'background .12s, color .12s',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'rgba(255,255,255,.07)'
+                    e.currentTarget.style.color = '#CBD5E1'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = item.accent ? '#0D9488' : '#94A3B8'
+                  }
+                }}
               >
-                {child.label}
+                <Icon size={14} style={{ flexShrink: 0 }} />
+                {!collapsed && <span style={{ flex: 1 }}>{item.label}</span>}
               </Link>
-            )
-          })}
+            </div>
+          )
+        })}
+      </nav>
+
+      {/* FM接続ステータス: 展開時のみ */}
+      {!collapsed && (
+        <div style={{ padding: '10px 14px', borderTop: '1px solid #1F2937', flexShrink: 0, background: '#111827' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }} />
+            <span style={{ fontSize: 10.5, color: '#6B7280' }}>FileMaker API 接続中</span>
+          </div>
+          <div style={{ fontSize: 9.5, color: '#4B5563' }}>最終同期: 5分前</div>
         </div>
       )}
-    </div>
-  )
-}
-
-export function Sidebar() {
-  return (
-    <aside
-      className="fixed top-0 left-0 h-screen flex flex-col"
-      style={{ width: 220, backgroundColor: 'var(--color-navy)' }}
-    >
-      <div className="px-4 py-4 border-b border-white/10">
-        <span className="text-white font-semibold text-[15px]">GrowthHub</span>
-      </div>
-      <nav className="flex-1 overflow-y-auto px-2 py-3 flex flex-col gap-0.5">
-        {navItems.map((item) => (
-          <NavGroup key={item.label} item={item} />
-        ))}
-      </nav>
     </aside>
   )
 }

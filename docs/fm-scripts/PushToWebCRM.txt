@@ -1,0 +1,103 @@
+スクリプト名: Push To Web CRM
+トリガー: OnRecordCommit（レコード確定時）
+説明: FMレコードをSupabase CRM Webhookに送信する
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+■ 必要な前準備
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Vercelの環境変数 FM_WEBHOOK_SECRET を確認する
+2. スクリプト内の YOUR_SECRET を実際のシークレットに置き換える
+3. スクリプト内の YOUR_VERCEL_DOMAIN を実際のドメインに置き換える
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+■ スクリプトステップ（FMスクリプトワークスペースに貼り付け）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+変数を設定 [$recordId; 値: Get(レコードID)]
+変数を設定 [$layout;   値: Get(レイアウト名)]
+変数を設定 [$secret;   値: "YOUR_SECRET"]
+変数を設定 [$url;      値: "https://YOUR_VERCEL_DOMAIN/api/fm/webhook"]
+
+// 送信するJSONを構築
+変数を設定 [$json; 値:
+  JSONSetElement ( "{}" ;
+    ["event";    "record_updated"; JSONString];
+    ["layout";   $layout;          JSONString];
+    ["recordId"; $recordId;        JSONString];
+    ["data"; JSONSetElement ( "{}" ;
+      ["顧客ID";          会社情報::顧客ID;          JSONString];
+      ["会社名";          会社情報::会社名;          JSONString];
+      ["代表名";          会社情報::代表名;          JSONString];
+      ["役職";            会社情報::役職;            JSONString];
+      ["都道府県";        会社情報::都道府県;        JSONString];
+      ["電話番号";        会社情報::電話番号;        JSONString];
+      ["メールアドレス";  会社情報::メールアドレス;  JSONString];
+      ["住所";            会社情報::住所;            JSONString];
+      ["ホームページ有無"; 会社情報::ホームページ有無; JSONString];
+      ["ホームページURL"; 会社情報::ホームページURL; JSONString];
+      ["定休日";          会社情報::定休日;          JSONString];
+      ["MEO";             会社情報::MEO;             JSONString];
+      ["リスト精査";      会社情報::リスト精査;      JSONString];
+      ["再コール日";      会社情報::再コール日;      JSONString];
+      ["再コール時刻";    会社情報::再コール時刻;    JSONString];
+      ["案件メモ";        会社情報::案件メモ;        JSONString];
+      ["業種";            会社情報::業種;            JSONString];
+      ["コール結果";      会社情報::最終コール結果;  JSONString];
+      ["ADNAME";          会社情報::ADNAME;          JSONString]
+    ); JSONRaw]
+  )
+]
+
+// WebhookにPOST
+URLから挿入 [選択; ターゲットフィールド: $result;
+  URL: $url;
+  HTTPメソッド: POST;
+  HTTPヘッダー:
+    "Content-Type: application/json
+x-fm-secret: " & $secret;
+  リクエスト本体: $json
+]
+
+// エラー確認
+If [IsEmpty ( $result ) or Get(最終エラー) ≠ 0]
+  カスタムダイアログを表示 ["CRM送信エラー"; "Webhook送信に失敗しました。エラー: " & Get(最終エラー)]
+End If
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+■ 削除イベント（レコード削除前にトリガー）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+スクリプト名: Delete From Web CRM
+
+変数を設定 [$recordId; 値: Get(レコードID)]
+変数を設定 [$layout;   値: Get(レイアウト名)]
+変数を設定 [$json; 値:
+  JSONSetElement ( "{}" ;
+    ["event";    "record_deleted"; JSONString];
+    ["layout";   $layout;          JSONString];
+    ["recordId"; $recordId;        JSONString];
+    ["data"; "{}"; JSONRaw]
+  )
+]
+
+URLから挿入 [選択; ターゲットフィールド: $result;
+  URL: "https://YOUR_VERCEL_DOMAIN/api/fm/webhook";
+  HTTPメソッド: POST;
+  HTTPヘッダー:
+    "Content-Type: application/json
+x-fm-secret: YOUR_SECRET";
+  リクエスト本体: $json
+]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+■ .env.local に追加する環境変数
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FM_WEBHOOK_SECRET=（32文字以上のランダム文字列）
+
+生成コマンド（ターミナルで実行）:
+  openssl rand -hex 32
+
+Vercelにも同じ値を設定:
+  vercel env add FM_WEBHOOK_SECRET

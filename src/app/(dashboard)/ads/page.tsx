@@ -1,18 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { subDays } from 'date-fns'
 import { ManagerTable } from '@/components/ads/manager-table'
 import { CohortView } from '@/components/ads/cohort-view'
 import { ColumnToggle, METRIC_DEFS, formatMetric } from '@/components/ads/column-toggle'
 import type { AdSetDayRow, CreativeRow } from '@/components/ads/manager-table'
 import type { CohortRow } from '@/components/ads/cohort-view'
-
-const PERIOD_OPTIONS = [
-  { label: '今月',  value: 'this_month' },
-  { label: '先月',  value: 'last_month'  },
-  { label: '90日',  value: '90d'         },
-  { label: '180日', value: '180d'        },
-]
+import { DateRangePicker, type DateRange } from '@/components/ui/DateRangePicker'
 
 /** 初期表示はこの媒体のみ（TikTok 等の手入力・旧データを画面から隠す） */
 const PRIMARY_PLATFORMS = new Set(['meta', 'google'])
@@ -27,33 +22,14 @@ function normPlatform(p: string): string {
   return p.trim().toLowerCase()
 }
 
-function getPeriodDates(value: string, customRange?: { since: string; until: string }): { since: string; until: string } {
-  if (value === 'custom' && customRange) return customRange
-  const now = new Date()
-  const until = now.toISOString().slice(0, 10)
-  if (value === 'this_month') {
-    return { since: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10), until }
-  }
-  if (value === 'last_month') {
-    return {
-      since: new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10),
-      until: new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10),
-    }
-  }
-  const days = parseInt(value.replace('d', ''), 10)
-  return { since: new Date(Date.now() - days * 86400_000).toISOString().slice(0, 10), until }
-}
-
-function formatCustomLabel(since: string, until: string): string {
-  return `${since.replace(/-/g, '/')}〜${until.replace(/-/g, '/')}`
+function dateRangeToSinceUntil(range: DateRange): { since: string; until: string } {
+  const until = (range.to ?? new Date()).toISOString().slice(0, 10)
+  const since = (range.from ?? subDays(new Date(), 30)).toISOString().slice(0, 10)
+  return { since, until }
 }
 
 export default function AdsPage() {
-  const [period, setPeriod] = useState('this_month')
-  const [customRange, setCustomRange] = useState<{ since: string; until: string } | null>(null)
-  const [showCustomPicker, setShowCustomPicker] = useState(false)
-  const [pickerSince, setPickerSince] = useState('')
-  const [pickerUntil, setPickerUntil] = useState('')
+  const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null })
   const pickerRef = useRef<HTMLDivElement>(null)
   const [activePlatform, setActivePlatform] = useState<'all' | 'meta' | 'google'>('all')
   const [roiData, setRoiData] = useState<AdSetDayRow[]>([])
@@ -102,22 +78,11 @@ export default function AdsPage() {
   }
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-        setShowCustomPicker(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  useEffect(() => {
-    if (period === 'custom' && !customRange) return
     let cancelled = false
     async function load() {
       setLoading(true)
       try {
-        const { since, until } = getPeriodDates(period, customRange ?? undefined)
+        const { since, until } = dateRangeToSinceUntil(dateRange)
         let res = await fetch(`/api/ads/roi?since=${since}&until=${until}`, { cache: 'no-store' })
         let json = await res.json()
 
@@ -150,7 +115,7 @@ export default function AdsPage() {
     }
     load()
     return () => { cancelled = true }
-  }, [period, customRange])
+  }, [dateRange])
 
   useEffect(() => {
     if (roiData.length === 0) return
@@ -194,84 +159,7 @@ export default function AdsPage() {
           広告マネージャー
         </h1>
         <div className="flex items-center gap-3">
-          <div className="relative flex items-center gap-2">
-            <div
-              className="flex rounded-lg border overflow-hidden"
-              style={{ borderColor: 'var(--color-gray-200)' }}
-            >
-              {PERIOD_OPTIONS.map((o, i) => (
-                <button
-                  key={o.value}
-                  onClick={() => { setPeriod(o.value); setCustomRange(null); setShowCustomPicker(false) }}
-                  className="px-4 py-1.5 text-[13px] font-medium transition-colors duration-150"
-                  style={{
-                    background: period === o.value ? 'var(--color-blue)' : 'var(--color-white)',
-                    color: period === o.value ? 'var(--color-white)' : 'var(--color-gray-600)',
-                    borderRight: i < PERIOD_OPTIONS.length - 1 ? '1px solid var(--color-gray-200)' : 'none',
-                  }}
-                >
-                  {o.label}
-                </button>
-              ))}
-              <button
-                onClick={() => setShowCustomPicker((v) => !v)}
-                className="px-4 py-1.5 text-[13px] font-medium transition-colors duration-150"
-                style={{
-                  background: period === 'custom' ? 'var(--color-blue)' : 'var(--color-white)',
-                  color: period === 'custom' ? 'var(--color-white)' : 'var(--color-gray-600)',
-                  borderLeft: '1px solid var(--color-gray-200)',
-                }}
-              >
-                {period === 'custom' && customRange
-                  ? formatCustomLabel(customRange.since, customRange.until)
-                  : 'カスタム'}
-              </button>
-            </div>
-            {showCustomPicker && (
-              <div
-                ref={pickerRef}
-                className="absolute top-full right-0 mt-1 z-50 rounded-xl border p-4 shadow-md"
-                style={{ background: 'var(--color-white)', borderColor: 'var(--color-gray-200)', minWidth: 260 }}
-              >
-                <p className="text-[12px] font-medium mb-3" style={{ color: 'var(--color-gray-600)' }}>期間を指定</p>
-                <div className="flex flex-col gap-2 mb-3">
-                  <label className="flex items-center gap-2 text-[12px]" style={{ color: 'var(--color-gray-600)' }}>
-                    <span className="w-12">開始日</span>
-                    <input
-                      type="date"
-                      value={pickerSince}
-                      onChange={(e) => setPickerSince(e.target.value)}
-                      className="border rounded px-2 py-1 text-[12px] tabular-nums"
-                      style={{ borderColor: 'var(--color-gray-200)', color: 'var(--color-gray-900)' }}
-                    />
-                  </label>
-                  <label className="flex items-center gap-2 text-[12px]" style={{ color: 'var(--color-gray-600)' }}>
-                    <span className="w-12">終了日</span>
-                    <input
-                      type="date"
-                      value={pickerUntil}
-                      onChange={(e) => setPickerUntil(e.target.value)}
-                      className="border rounded px-2 py-1 text-[12px] tabular-nums"
-                      style={{ borderColor: 'var(--color-gray-200)', color: 'var(--color-gray-900)' }}
-                    />
-                  </label>
-                </div>
-                <button
-                  type="button"
-                  disabled={!pickerSince || !pickerUntil || pickerSince > pickerUntil}
-                  onClick={() => {
-                    setCustomRange({ since: pickerSince, until: pickerUntil })
-                    setPeriod('custom')
-                    setShowCustomPicker(false)
-                  }}
-                  className="w-full rounded-lg py-1.5 text-[13px] font-medium text-white transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: 'var(--color-blue)' }}
-                >
-                  適用
-                </button>
-              </div>
-            )}
-          </div>
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
           <ColumnToggle visible={visibleCols} onChange={setVisibleCols} />
           {syncResult != null && (
             <span className="text-[12px]" style={{ color: 'var(--color-gray-600)' }}>{syncResult}</span>

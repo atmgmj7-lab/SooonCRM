@@ -1,3 +1,7 @@
+'use client'
+
+import { StatusSelect } from './StatusSelect'
+
 type Rec = Record<string, unknown>
 
 function AttrCell({ label, value }: { label: string; value: string | null | undefined }) {
@@ -13,10 +17,20 @@ function AttrCell({ label, value }: { label: string; value: string | null | unde
   )
 }
 
-export function ListAttrHeader({ record }: { record: Rec }) {
+export function ListAttrHeader({
+  record,
+  statusLead,
+  onStatusChange,
+}: {
+  record: Rec
+  statusLead?: { id: string; status: string } | null
+  onStatusChange?: (s: string) => void
+}) {
   const listCreatedAt = (record.list_created_at as string | null)
     ?.slice(0, 16)
     .replace('T', ' ')
+
+  const statusValue = statusLead?.status ?? ''
 
   return (
     <div
@@ -27,7 +41,21 @@ export function ListAttrHeader({ record }: { record: Rec }) {
       <AttrCell label="リスト譲渡日" value={record.list_handover_date as string} />
       <AttrCell label="リスト" value={record.list_name as string} />
       <AttrCell label="業種" value={record.industry as string} />
-      <AttrCell label="新人フラグ" value={record.newcomer_flag as string} />
+      <div className="flex flex-col gap-0.5 shrink-0">
+        <span className="text-[9px] font-medium uppercase tracking-wide" style={{ color: 'var(--color-gray-400)' }}>
+          ステータス
+        </span>
+        {statusLead ? (
+          <StatusSelect
+            leadId={statusLead.id}
+            value={statusValue}
+            size="sm"
+            onUpdate={onStatusChange}
+          />
+        ) : (
+          <span className="text-[11px]" style={{ color: 'var(--color-gray-300)' }}>—</span>
+        )}
+      </div>
       <AttrCell label="リスト作成日時" value={listCreatedAt} />
     </div>
   )

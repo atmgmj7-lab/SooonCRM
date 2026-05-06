@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Link2 } from 'lucide-react'
+import { StatusSelect } from '@/components/list/StatusSelect'
 
 type Lead = {
   id: string
@@ -10,51 +11,43 @@ type Lead = {
   inquiry_date: string | null
   ad_name: string | null
   company_name: string | null
-  rep_title: string | null
   representative_name: string | null
-  email_address: string | null
-  phone_number: string | null
   prefecture: string | null
+  phone_number: string | null
+  status: string | null
   last_call_result: string | null
-  completion_progress: string | null
-  call_count: string | number | null
-  recall_date: string | null
-  recall_time: string | null
-  adjusting: boolean | null
-  jitsuyo_ok: boolean | null
-  ichiyou_ng: boolean | null
-  order_closed: boolean | null
 }
 
-const RESULT_OPTIONS = ['', 'アポOK', 'NG', '留守', '対象外', '再コール', '思案中', 'ポータルサイト']
+type TabKey = 'all' | 'new' | 'done'
+
+function daysElapsed(inquiryDate: string | null): number | null {
+  if (!inquiryDate) return null
+  const d = new Date(inquiryDate)
+  if (Number.isNaN(d.getTime())) return null
+  const today = new Date()
+  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  return Math.floor((end.getTime() - start.getTime()) / 86400000)
+}
 
 const COL_WIDTHS = {
-  list_record_id:       64,
-  inquiry_date:         88,
-  ad_name:             150,
-  company_name:        130,
-  rep_title:            72,
-  representative_name:  96,
-  email_address:       140,
-  phone_number:        112,
-  prefecture:           68,
-  last_call_result:     84,
-  completion_progress:  68,
-  call_count:           52,
-  recall_date:          84,
-  recall_time:          60,
-  adjusting:            60,
-  jitsuyo_ok:           68,
-  ichiyou_ng:           60,
-  order_closed:         52,
-}
+  list_record_id:      72,
+  inquiry_date:        96,
+  ad_name:            160,
+  company_name:       140,
+  representative_name: 100,
+  prefecture:          72,
+  phone_number:       120,
+  elapsed:             72,
+  status:             120,
+} as const
 
 const TOTAL_WIDTH = Object.values(COL_WIDTHS).reduce((a, b) => a + b, 0)
 
-function Th({ label, w, center }: { label: string; w: number; center?: boolean }) {
+function Th({ label, w }: { label: string; w: number }) {
   return (
     <th
-      className={`px-2 py-2.5 text-[11px] font-medium whitespace-nowrap overflow-hidden text-ellipsis${center ? ' text-center' : ' text-left'}`}
+      className="px-2 py-2.5 text-[11px] font-medium whitespace-nowrap overflow-hidden text-ellipsis text-left"
       style={{ color: 'var(--color-gray-600)', width: w, minWidth: w, maxWidth: w }}
     >
       {label}
@@ -62,15 +55,13 @@ function Th({ label, w, center }: { label: string; w: number; center?: boolean }
   )
 }
 
-function Td({ value, w, center }: { value: React.ReactNode; w: number; center?: boolean }) {
-  const text = typeof value === 'string' ? value : undefined
+function Td({ children, w }: { children: React.ReactNode; w: number }) {
   return (
     <td
-      title={text}
-      className={`px-2 py-1.5 text-[11px] overflow-hidden whitespace-nowrap text-ellipsis align-middle${center ? ' text-center' : ''}`}
+      className="px-2 py-1.5 text-[11px] overflow-hidden whitespace-nowrap text-ellipsis align-middle"
       style={{ width: w, minWidth: w, maxWidth: w, color: 'var(--color-gray-700)' }}
     >
-      {value ?? '—'}
+      {children}
     </td>
   )
 }
@@ -85,35 +76,24 @@ function ListLinkBadge({ listRecordId, onNavigate }: { listRecordId: string | nu
       style={{ background: 'var(--color-blue-light)', color: 'var(--color-blue)' }}
     >
       <Link2 size={9} />
-      追加済
+      リスト
     </button>
   )
 }
 
-function ResultBadge({ result }: { result: string | null }) {
-  if (!result) return <span style={{ color: 'var(--color-gray-300)' }}>—</span>
-  const isAppo = result === 'アポOK'
+function ElapsedCell({ days }: { days: number | null }) {
+  if (days == null) return <span style={{ color: 'var(--color-gray-300)' }}>—</span>
+  let color = 'var(--color-success)'
+  let fontWeight: 500 | 700 = 500
+  if (days >= 7) {
+    color = 'var(--color-danger)'
+    fontWeight = 700
+  } else if (days >= 3) {
+    color = 'var(--color-warning)'
+  }
   return (
-    <span
-      className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium"
-      style={{
-        background: isAppo ? 'var(--color-success-bg)' : 'var(--color-gray-100)',
-        color: isAppo ? 'var(--color-success)' : 'var(--color-gray-600)',
-      }}
-    >
-      {result}
-    </span>
-  )
-}
-
-function BoolBadge({ value, label, color }: { value: boolean | null; label: string; color: string }) {
-  if (!value) return <span style={{ color: 'var(--color-gray-200)' }}>—</span>
-  return (
-    <span
-      className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold"
-      style={{ background: `var(--color-${color}-bg)`, color: `var(--color-${color})` }}
-    >
-      {label}
+    <span className="tabular-nums" style={{ color, fontWeight }}>
+      {days}日
     </span>
   )
 }
@@ -123,37 +103,43 @@ export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
+  const [newLeadCount, setNewLeadCount] = useState(0)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
   const [q, setQ] = useState('')
-  const [result, setResult] = useState('')
+  const [tab, setTab] = useState<TabKey>('all')
 
-  const buildUrl = useCallback((q: string, result: string, p: number) => {
-    const params = new URLSearchParams({ page: String(p) })
-    if (q) params.set('q', q)
-    if (result) params.set('result', result)
+  const buildUrl = useCallback((qStr: string, tabKey: TabKey, p: number) => {
+    const params = new URLSearchParams({ page: String(p), tab: tabKey })
+    if (qStr) params.set('q', qStr)
     return `/api/leads?${params}`
   }, [])
 
-  const load = useCallback(async (q: string, result: string) => {
+  const load = useCallback(async (qStr: string, tabKey: TabKey) => {
     setLoading(true)
     try {
-      const res = await fetch(buildUrl(q, result, 1), { cache: 'no-store' })
-      const json = await res.json() as { leads: Lead[]; total: number; hasMore: boolean }
+      const res = await fetch(buildUrl(qStr, tabKey, 1), { cache: 'no-store' })
+      const json = await res.json() as {
+        leads: Lead[]
+        total: number
+        hasMore: boolean
+        newLeadCount?: number
+      }
       setLeads(json.leads ?? [])
       setTotal(json.total ?? 0)
       setHasMore(json.hasMore ?? false)
+      setNewLeadCount(json.newLeadCount ?? 0)
       setPage(1)
     } finally {
       setLoading(false)
     }
   }, [buildUrl])
 
-  useEffect(() => { load(q, result) }, [q, result, load])
+  useEffect(() => { void load(q, tab) }, [q, tab, load])
 
   async function loadMore() {
     const next = page + 1
-    const res = await fetch(buildUrl(q, result, next), { cache: 'no-store' })
+    const res = await fetch(buildUrl(q, tab, next), { cache: 'no-store' })
     const json = await res.json() as { leads: Lead[]; hasMore: boolean }
     setLeads((prev) => [...prev, ...(json.leads ?? [])])
     setHasMore(json.hasMore ?? false)
@@ -161,6 +147,7 @@ export default function LeadsPage() {
   }
 
   const w = COL_WIDTHS
+  const colCount = Object.keys(COL_WIDTHS).length
 
   return (
     <div className="p-6" style={{ background: 'var(--color-gray-50)', minHeight: '100%' }}>
@@ -176,6 +163,29 @@ export default function LeadsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-3">
+        <div className="flex rounded-lg border p-0.5" style={{ borderColor: 'var(--color-gray-200)', background: 'var(--color-white)' }}>
+          {([
+            ['all', '全リード'],
+            ['new', `新規リード 🔴${newLeadCount.toLocaleString()}件`],
+            ['done', '対応済み'],
+          ] as const).map(([key, label]) => {
+            const active = tab === key
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                className="px-3 py-1.5 text-[13px] font-medium rounded-md"
+                style={{
+                  background: active ? 'var(--color-gray-100)' : 'transparent',
+                  color: active ? 'var(--color-gray-900)' : 'var(--color-gray-500)',
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
         <div className="relative">
           <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-gray-400)' }} />
           <input
@@ -187,17 +197,6 @@ export default function LeadsPage() {
             style={{ borderColor: 'var(--color-gray-200)', background: 'var(--color-white)', color: 'var(--color-gray-900)', width: 240 }}
           />
         </div>
-        <select
-          value={result}
-          onChange={(e) => setResult(e.target.value)}
-          className="rounded-lg border px-3 py-1.5 text-[13px]"
-          style={{ borderColor: 'var(--color-gray-200)', background: 'var(--color-white)', color: 'var(--color-gray-900)' }}
-        >
-          <option value="">架電結果（全て）</option>
-          {RESULT_OPTIONS.filter(Boolean).map((o) => (
-            <option key={o} value={o}>{o}</option>
-          ))}
-        </select>
       </div>
 
       <div
@@ -210,37 +209,28 @@ export default function LeadsPage() {
         >
           <thead>
             <tr style={{ background: 'var(--color-gray-50)', borderBottom: '1px solid var(--color-gray-200)' }}>
-              <Th label="リスト"         w={w.list_record_id} center />
-              <Th label="問い合わせ日"   w={w.inquiry_date} />
-              <Th label="広告名"         w={w.ad_name} />
-              <Th label="会社名"         w={w.company_name} />
-              <Th label="役職"           w={w.rep_title} />
-              <Th label="代表名"         w={w.representative_name} />
-              <Th label="メール"         w={w.email_address} />
-              <Th label="電話番号"       w={w.phone_number} />
-              <Th label="都道府県"       w={w.prefecture} />
-              <Th label="架電結果"       w={w.last_call_result} />
-              <Th label="完了進捗"       w={w.completion_progress} />
-              <Th label="コール数"       w={w.call_count} />
-              <Th label="再コール日"     w={w.recall_date} />
-              <Th label="再時間"         w={w.recall_time} />
-              <Th label="調整中"         w={w.adjusting} center />
-              <Th label="採用OK"         w={w.jitsuyo_ok} center />
-              <Th label="採用NG"         w={w.ichiyou_ng} center />
-              <Th label="受注"           w={w.order_closed} center />
+              <Th label="リスト" w={w.list_record_id} />
+              <Th label="問い合わせ日" w={w.inquiry_date} />
+              <Th label="広告名" w={w.ad_name} />
+              <Th label="会社名" w={w.company_name} />
+              <Th label="代表名" w={w.representative_name} />
+              <Th label="都道府県" w={w.prefecture} />
+              <Th label="電話番号" w={w.phone_number} />
+              <Th label="経過日数" w={w.elapsed} />
+              <Th label="対応" w={w.status} />
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={18} className="py-12 text-center text-[13px] animate-pulse" style={{ color: 'var(--color-gray-400)' }}>
+                <td colSpan={colCount} className="py-12 text-center text-[13px] animate-pulse" style={{ color: 'var(--color-gray-400)' }}>
                   読み込み中…
                 </td>
               </tr>
             )}
             {!loading && leads.length === 0 && (
               <tr>
-                <td colSpan={18} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
+                <td colSpan={colCount} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
                   データがありません
                 </td>
               </tr>
@@ -249,8 +239,8 @@ export default function LeadsPage() {
               <tr
                 key={`${lead.id}-${index}`}
                 style={{ borderBottom: '1px solid var(--color-gray-200)' }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-gray-50)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-gray-50)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
               >
                 <td
                   className="px-2 py-1.5 text-[11px] align-middle text-center"
@@ -261,52 +251,26 @@ export default function LeadsPage() {
                     onNavigate={() => router.push(`/list/${lead.list_record_id}`)}
                   />
                 </td>
-                <Td value={lead.inquiry_date}          w={w.inquiry_date} />
-                <Td value={lead.ad_name}               w={w.ad_name} />
-                <Td value={lead.company_name}          w={w.company_name} />
-                <Td value={lead.rep_title}             w={w.rep_title} />
-                <Td value={lead.representative_name}   w={w.representative_name} />
-                <Td value={lead.email_address}         w={w.email_address} />
-                <Td value={lead.phone_number}          w={w.phone_number} />
-                <Td value={lead.prefecture}            w={w.prefecture} />
-                <td
-                  className="px-2 py-1.5 text-[11px] align-middle"
-                  style={{ width: w.last_call_result, minWidth: w.last_call_result, maxWidth: w.last_call_result }}
-                >
-                  <ResultBadge result={lead.last_call_result} />
-                </td>
-                <Td value={lead.completion_progress}   w={w.completion_progress} />
-                <td
-                  className="px-2 py-1.5 text-[11px] align-middle tabular-nums text-right"
-                  style={{ width: w.call_count, minWidth: w.call_count, maxWidth: w.call_count, color: 'var(--color-gray-600)' }}
-                >
-                  {lead.call_count != null ? Number(lead.call_count) : '—'}
-                </td>
-                <Td value={lead.recall_date}           w={w.recall_date} />
-                <Td value={lead.recall_time}           w={w.recall_time} />
-                <td
-                  className="px-2 py-1.5 text-[11px] align-middle text-center"
-                  style={{ width: w.adjusting, minWidth: w.adjusting, maxWidth: w.adjusting }}
-                >
-                  <BoolBadge value={lead.adjusting}    label="調整中" color="warning" />
-                </td>
-                <td
-                  className="px-2 py-1.5 text-[11px] align-middle text-center"
-                  style={{ width: w.jitsuyo_ok, minWidth: w.jitsuyo_ok, maxWidth: w.jitsuyo_ok }}
-                >
-                  <BoolBadge value={lead.jitsuyo_ok}   label="採用OK" color="success" />
-                </td>
-                <td
-                  className="px-2 py-1.5 text-[11px] align-middle text-center"
-                  style={{ width: w.ichiyou_ng, minWidth: w.ichiyou_ng, maxWidth: w.ichiyou_ng }}
-                >
-                  <BoolBadge value={lead.ichiyou_ng}   label="採用NG" color="danger" />
-                </td>
-                <td
-                  className="px-2 py-1.5 text-[11px] align-middle text-center"
-                  style={{ width: w.order_closed, minWidth: w.order_closed, maxWidth: w.order_closed }}
-                >
-                  <BoolBadge value={lead.order_closed} label="受注"   color="success" />
+                <Td w={w.inquiry_date}>{lead.inquiry_date ?? '—'}</Td>
+                <Td w={w.ad_name}><span title={lead.ad_name ?? ''}>{lead.ad_name ?? '—'}</span></Td>
+                <Td w={w.company_name}>{lead.company_name ?? '—'}</Td>
+                <Td w={w.representative_name}>{lead.representative_name ?? '—'}</Td>
+                <Td w={w.prefecture}>{lead.prefecture ?? '—'}</Td>
+                <Td w={w.phone_number}><span className="tabular-nums">{lead.phone_number ?? '—'}</span></Td>
+                <Td w={w.elapsed}>
+                  <ElapsedCell days={daysElapsed(lead.inquiry_date)} />
+                </Td>
+                <td className="px-1 py-1 align-middle" style={{ width: w.status, minWidth: w.status, maxWidth: w.status }}>
+                  <StatusSelect
+                    leadId={lead.id}
+                    value={lead.status ?? lead.last_call_result ?? '新規'}
+                    size="sm"
+                    onUpdate={(s) => {
+                      setLeads((prev) =>
+                        prev.map((l) => (l.id === lead.id ? { ...l, status: s, last_call_result: s } : l)),
+                      )
+                    }}
+                  />
                 </td>
               </tr>
             ))}

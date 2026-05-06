@@ -26,6 +26,8 @@ export type Lead = {
   contract_months: number | null
   total_revenue: number | null
   list_record_id: string | null
+  status: string | null
+  newcomer_flag: string | null
   imported_from_csv: boolean
   csv_row_number: number | null
   created_at: string
@@ -33,6 +35,8 @@ export type Lead = {
 
 export type LeadManualFields = Pick<
   Lead,
+  | 'status'
+  | 'newcomer_flag'
   | 'last_call_result'
   | 'call_count'
   | 'recall_date'
@@ -48,6 +52,8 @@ export type LeadManualFields = Pick<
 >
 
 export const MANUAL_LEAD_FIELDS: (keyof LeadManualFields)[] = [
+  'status',
+  'newcomer_flag',
   'last_call_result',
   'call_count',
   'recall_date',

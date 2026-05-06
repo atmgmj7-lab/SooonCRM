@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ActionSidebar } from './ActionSidebar'
 import { ListAttrHeader } from './ListAttrHeader'
@@ -16,6 +16,7 @@ type Call = {
   call_end_time: string | null
   call_duration_minutes: number | null
   agent_name: string | null
+  newcomer_flag: string | null
   call_result: string | null
   call_category: string | null
   appo_detail: string | null
@@ -25,15 +26,16 @@ type Lead = {
   id: string
   inquiry_date: string | null
   ad_name: string | null
+  status: string | null
+  newcomer_flag: string | null
   last_call_result: string | null
   order_closed: boolean | null
   jitsuyo_ok: boolean | null
   total_revenue: number | null
 }
 
-type SyncStatus = 'idle' | 'saving' | 'fm_pending' | 'error' | 'done'
+type SyncStatus = 'idle' | 'saving' | 'error' | 'done'
 type PresencePayload = { sessionId: string; name: string }
-type EditableFields = { case_memo: string; recall_date: string; recall_time: string }
 
 function SyncBanner({
   status,
@@ -47,10 +49,9 @@ function SyncBanner({
   if (status === 'idle') return null
 
   const configs: Partial<Record<SyncStatus, { bg: string; color: string; msg: string }>> = {
-    saving:     { bg: 'var(--color-blue-light)',  color: 'var(--color-blue)',    msg: '保存中...' },
-    fm_pending: { bg: 'var(--color-warning-bg)',  color: 'var(--color-warning)', msg: 'Web保存済 / FM同期中...' },
-    error:      { bg: 'var(--color-danger-bg)',   color: 'var(--color-danger)',  msg: `FM同期未完了（再試行中）${error ? ': ' + error : ''}` },
-    done:       { bg: 'var(--color-success-bg)',  color: 'var(--color-success)', msg: '同期完了' },
+    saving: { bg: 'var(--color-blue-light)',  color: 'var(--color-blue)',    msg: '保存中...' },
+    error:  { bg: 'var(--color-danger-bg)',   color: 'var(--color-danger)',  msg: `保存失敗${error ? ': ' + error : ''}` },
+    done:   { bg: 'var(--color-success-bg)',  color: 'var(--color-success)', msg: '保存完了' },
   }
   const c = configs[status]
   if (!c) return null
@@ -62,16 +63,29 @@ function SyncBanner({
     >
       <span>{c.msg}</span>
       {status === 'error' && (
-        <button onClick={onRetry} className="text-[10px] underline ml-4">
-          再試行
-        </button>
+        <button type="button" onClick={onRetry} className="text-[10px] underline ml-4">再試行</button>
       )}
     </div>
   )
 }
 
+function Toast({ message, onClose }: { message: string; onClose: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 4000)
+    return () => clearTimeout(t)
+  }, [onClose])
+  return (
+    <div
+      className="fixed bottom-4 right-4 z-50 px-4 py-2 rounded-lg text-[12px] shadow-lg"
+      style={{ background: 'var(--color-danger)', color: 'var(--color-white)' }}
+    >
+      {message}
+    </div>
+  )
+}
+
 export function ListDetailClient({
-  record,
+  record: initialRecord,
   calls,
   leads,
 }: {
@@ -79,29 +93,28 @@ export function ListDetailClient({
   calls: Call[]
   leads: Lead[]
 }) {
-  const listRecordId = record.id as string
-  const fmRecordId   = record.fm_record_id as string | null
+  const listRecordId = initialRecord.id as string
+  const fmRecordId   = initialRecord.fm_record_id as string | null
 
-  const [fields, setFields] = useState<EditableFields>({
-    case_memo:   (record.case_memo   as string) ?? '',
-    recall_date: (record.recall_date as string) ?? '',
-    recall_time: (record.recall_time as string) ?? '',
-  })
-  const initialFields = useRef<EditableFields>(fields)
+  const [record, setRecord] = useState<Record<string, unknown>>(initialRecord)
+  const [leadsLocal, setLeadsLocal] = useState<Lead[]>(leads)
+  const [memo, setMemo] = useState<string>((initialRecord.case_memo as string) ?? '')
+  const memoRef = useRef(memo)
+  memoRef.current = memo
 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
   const [syncError,  setSyncError]  = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
   const [otherUsers, setOtherUsers] = useState<PresencePayload[]>([])
   const mySessionId = useRef(crypto.randomUUID())
 
-  // Supabase Realtime Presence — 排他制御
+  useEffect(() => { setLeadsLocal(leads) }, [leads])
+
   useEffect(() => {
     const supabase  = createClient()
     const sessionId = mySessionId.current
     const name = 'ユーザー' + sessionId.slice(-4)
-
     const channel = supabase.channel(`list-detail:${listRecordId}`)
-
     channel
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<PresencePayload>()
@@ -109,91 +122,161 @@ export function ListDetailClient({
         setOtherUsers(all.filter((p) => p.sessionId !== sessionId))
       })
       .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({ sessionId, name })
-        }
+        if (status === 'SUBSCRIBED') await channel.track({ sessionId, name })
       })
-
-    return () => {
-      channel.untrack()
-      supabase.removeChannel(channel)
-    }
+    return () => { channel.untrack(); supabase.removeChannel(channel) }
   }, [listRecordId])
 
   const isLocked = otherUsers.length > 0
   const lockedBy = otherUsers[0]?.name ?? null
 
-  // 終了ボタン → 差分保存 → FM 非同期同期
-  const doSave = useCallback(async () => {
-    const diff: Partial<EditableFields> = {}
-    const init = initialFields.current
-    if (fields.case_memo   !== init.case_memo)   diff.case_memo   = fields.case_memo
-    if (fields.recall_date !== init.recall_date) diff.recall_date = fields.recall_date
-    if (fields.recall_time !== init.recall_time) diff.recall_time = fields.recall_time
+  const primaryLead = leadsLocal[0] ?? null
 
-    if (Object.keys(diff).length === 0) return
-
+  const saveField = useCallback(async (key: string, value: unknown) => {
     setSyncStatus('saving')
     setSyncError(null)
-
     try {
       const res = await fetch(`/api/list-records/${listRecordId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields: diff, fmRecordId }),
+        body: JSON.stringify({ fields: { [key]: value }, fmRecordId }),
       })
-
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string }
         throw new Error(body.error ?? `status ${res.status}`)
       }
-
-      initialFields.current = { ...fields }
-      setSyncStatus('fm_pending')
-      setTimeout(() => setSyncStatus('done'), 3000)
-      setTimeout(() => setSyncStatus('idle'), 6000)
+      setRecord((prev) => ({ ...prev, [key]: value }))
+      setSyncStatus('done')
+      setTimeout(() => setSyncStatus('idle'), 3000)
     } catch (err) {
-      setSyncError(err instanceof Error ? err.message : String(err))
+      const msg = err instanceof Error ? err.message : String(err)
+      setSyncError(msg)
       setSyncStatus('error')
+      setToast(`保存失敗: ${msg}`)
+      throw err
     }
-  }, [fields, listRecordId, fmRecordId])
+  }, [listRecordId, fmRecordId])
+
+  const saveLeadNewcomer = useCallback(async (value: string) => {
+    if (!primaryLead) return
+    setSyncStatus('saving')
+    setSyncError(null)
+    try {
+      const res = await fetch(`/api/leads/${primaryLead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newcomer_flag: value }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(body.error ?? `status ${res.status}`)
+      }
+      setLeadsLocal((prev) =>
+        prev.map((l) => (l.id === primaryLead.id ? { ...l, newcomer_flag: value } : l)),
+      )
+      setSyncStatus('done')
+      setTimeout(() => setSyncStatus('idle'), 3000)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setSyncError(msg)
+      setSyncStatus('error')
+      setToast(`保存失敗: ${msg}`)
+      throw err
+    }
+  }, [primaryLead])
+
+  const doSaveMemo = useCallback(async () => {
+    const currentMemo = memoRef.current
+    if (currentMemo === ((initialRecord.case_memo as string) ?? '')) return
+    await saveField('case_memo', currentMemo).catch(() => {})
+  }, [saveField, initialRecord])
+
+  const statusLead = primaryLead
+    ? {
+        id: primaryLead.id,
+        status: primaryLead.status ?? primaryLead.last_call_result ?? '新規',
+      }
+    : null
 
   return (
     <div
-      className="-m-8 flex overflow-hidden"
-      style={{ height: 'calc(100vh - 56px)', background: 'var(--color-gray-50)' }}
+      className="-m-8"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: 'calc(100vh - 56px)',
+        overflow: 'hidden',
+        background: 'var(--color-gray-50)',
+      }}
     >
-      <ActionSidebar onEnd={doSave} listRecordId={listRecordId} leads={leads} />
+      <div
+        className="flex min-h-0"
+        style={{ flex: 1, overflow: 'hidden' }}
+      >
+        <ActionSidebar onEnd={doSaveMemo} listRecordId={listRecordId} leads={leadsLocal} />
 
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <SyncBanner status={syncStatus} error={syncError} onRetry={doSave} />
-        <ListAttrHeader record={record} />
-        <ListMainDetail
-          record={record}
-          recallDate={fields.recall_date}
-          recallTime={fields.recall_time}
-          onRecallDateChange={(v) => setFields((f) => ({ ...f, recall_date: v }))}
-          onRecallTimeChange={(v) => setFields((f) => ({ ...f, recall_time: v }))}
-          disabled={isLocked}
-        />
-
-        <div className="flex flex-1 gap-2 p-2 overflow-hidden min-h-0">
-          <HistoryTabs calls={calls} leads={leads} />
+        <div
+          className="flex flex-col min-w-0 min-h-0"
+          style={{ flex: 1, overflow: 'hidden' }}
+        >
+          <div style={{ flexShrink: 0 }}>
+            <SyncBanner status={syncStatus} error={syncError} onRetry={() => setSyncStatus('idle')} />
+            <ListAttrHeader
+              record={record}
+              statusLead={statusLead}
+              onStatusChange={(s) => {
+                if (!primaryLead) return
+                setLeadsLocal((prev) =>
+                  prev.map((l) =>
+                    l.id === primaryLead.id ? { ...l, status: s, last_call_result: s } : l,
+                  ),
+                )
+              }}
+            />
+            <ListMainDetail
+              record={record}
+              disabled={isLocked}
+              onSave={saveField}
+              primaryLeadId={primaryLead?.id ?? null}
+              leadNewcomerFlag={primaryLead?.newcomer_flag ?? ''}
+              onSaveLeadNewcomer={saveLeadNewcomer}
+            />
+          </div>
 
           <div
-            className="flex flex-col gap-2 min-h-0 overflow-hidden"
-            style={{ width: '34%', flexShrink: 0 }}
+            className="flex gap-2 p-2 min-h-0"
+            style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}
           >
-            <InquiryHistory leads={leads} />
-            <MemoArea
-              memo={fields.case_memo}
-              onChange={(v) => setFields((f) => ({ ...f, case_memo: v }))}
-              disabled={isLocked}
-              presenceName={lockedBy}
-            />
+            <div
+              className="min-h-0 min-w-0"
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+            >
+              <HistoryTabs calls={calls} leads={leadsLocal} />
+            </div>
+            <div
+              className="flex flex-col gap-2 min-h-0"
+              style={{
+                width: '34%',
+                flexShrink: 0,
+                position: 'sticky',
+                top: 16,
+                alignSelf: 'flex-start',
+                maxHeight: '100%',
+              }}
+            >
+              <InquiryHistory leads={leadsLocal} />
+              <MemoArea
+                memo={memo}
+                onChange={(v) => setMemo(v)}
+                disabled={isLocked}
+                presenceName={lockedBy}
+              />
+            </div>
           </div>
         </div>
       </div>
+
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
   )
 }

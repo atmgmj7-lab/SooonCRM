@@ -7,19 +7,14 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--color-gray-50)' }}>
-      <Sidebar />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <Header />
-      <main
-        className="overflow-auto"
-        style={{
-          marginLeft: 220,
-          paddingTop: 56,
-          minHeight: '100vh',
-        }}
-      >
-        <div className="p-8">{children}</div>
-      </main>
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <Sidebar />
+        <main style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+          {children}
+        </main>
+      </div>
     </div>
   )
 }

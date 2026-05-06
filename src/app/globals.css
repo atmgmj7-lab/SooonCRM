@@ -15,19 +15,51 @@
   --color-danger: #A32D2D;
   --color-danger-bg: #FCEBEB;
 
+  /* Teal (secondary primary) */
+  --color-teal: #0D9488;
+  --color-teal-bg: #F0FDFA;
+
   /* Neutral */
   --color-gray-50: #F8FAFC;
   --color-gray-100: #F1F5F9;
   --color-gray-200: #E2E8F0;
+  --color-gray-300: #CBD5E1;
   --color-gray-400: #94A3B8;
+  --color-gray-500: #64748B;
   --color-gray-600: #475569;
+  --color-gray-700: #374151;
+  --color-gray-800: #1E293B;
   --color-gray-900: #0F172A;
   --color-white: #FFFFFF;
 }
+
+/* Tabular nums utility */
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* Table hover */
+tbody tr:hover td { background: #F0FDF4 !important; }
 
 body {
   font-family: 'Hiragino Sans', 'ヒラギノ角ゴシック', 'Hiragino Kaku Gothic ProN',
                'ヒラギノ角ゴ ProN W3', sans-serif;
   background-color: var(--color-gray-50);
   color: var(--color-gray-900);
+}
+
+/* サイドバー折りたたみ時のホバーツールチップ */
+.sidebar-nav-item-wrap [title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: 52px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1F2937;
+  color: #F9FAFB;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
 }

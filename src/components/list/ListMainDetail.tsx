@@ -1,45 +1,53 @@
 'use client'
 
+import { useRef, useState } from 'react'
+
 type Rec = Record<string, unknown>
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col min-w-0">
-      <div
-        className="text-[9px] font-medium px-1.5 py-0.5 border-b"
-        style={{
-          background: 'var(--color-gray-100)',
-          borderColor: 'var(--color-gray-200)',
-          color: 'var(--color-gray-500)',
-        }}
-      >
-        {label}
-      </div>
-      <div
-        className="px-1.5 py-1 text-[11px] font-medium min-h-[22px]"
-        style={{ color: 'var(--color-gray-900)' }}
-      >
-        {children ?? <span style={{ color: 'var(--color-gray-300)' }}>—</span>}
-      </div>
-    </div>
-  )
-}
+// ── Inline edit components ──────────────────────────────────────
 
-function EditField({
+function InlineText({
   label,
   value,
-  type = 'text',
-  onChange,
+  colSpan,
+  onSave,
   disabled,
+  type = 'text',
+  multiline,
 }: {
   label: string
   value: string
-  type?: string
-  onChange?: (v: string) => void
+  colSpan?: string
+  onSave?: (v: string) => Promise<void>
   disabled?: boolean
+  type?: string
+  multiline?: boolean
 }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+  const [flash, setFlash] = useState(false)
+  const ref = useRef<HTMLInputElement & HTMLTextAreaElement>(null)
+
+  async function commit() {
+    setEditing(false)
+    if (draft === value) return
+    try {
+      await onSave?.(draft)
+      setFlash(true)
+      setTimeout(() => setFlash(false), 800)
+    } catch {
+      setDraft(value)
+    }
+  }
+
+  const cellStyle: React.CSSProperties = {
+    background: flash ? '#dcfce7' : editing ? '#eff6ff' : undefined,
+    transition: 'background 0.3s',
+    gridColumn: colSpan,
+  }
+
   return (
-    <div className="flex flex-col min-w-0">
+    <div className="flex flex-col min-w-0" style={cellStyle}>
       <div
         className="text-[9px] font-medium px-1.5 py-0.5 border-b"
         style={{
@@ -50,93 +58,447 @@ function EditField({
       >
         {label}
       </div>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-        disabled={disabled}
-        className="px-1.5 py-1 text-[11px] font-medium min-h-[22px] bg-transparent outline-none tabular-nums w-full"
-        style={{
-          color: 'var(--color-gray-900)',
-          fontFamily: 'inherit',
-          cursor: disabled ? 'not-allowed' : 'text',
-          opacity: disabled ? 0.5 : 1,
-        }}
-      />
+      {editing ? (
+        multiline ? (
+          <textarea
+            ref={ref as React.RefObject<HTMLTextAreaElement>}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => { if (e.key === 'Escape') { setDraft(value); setEditing(false) } }}
+            className="px-1.5 py-1 text-[11px] min-h-[44px] resize-none outline-none bg-transparent w-full"
+            style={{ color: 'var(--color-gray-900)', fontFamily: 'inherit' }}
+            autoFocus
+          />
+        ) : (
+          <input
+            ref={ref as React.RefObject<HTMLInputElement>}
+            type={type}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') ref.current?.blur()
+              if (e.key === 'Escape') { setDraft(value); setEditing(false) }
+            }}
+            className="px-1.5 py-1 text-[11px] font-medium min-h-[22px] outline-none bg-transparent tabular-nums w-full"
+            style={{ color: 'var(--color-gray-900)', fontFamily: 'inherit' }}
+            autoFocus
+          />
+        )
+      ) : (
+        <div
+          className="px-1.5 py-1 text-[11px] font-medium min-h-[22px] cursor-text"
+          style={{ color: draft ? 'var(--color-gray-900)' : 'var(--color-gray-300)' }}
+          onClick={() => { if (!disabled) { setDraft(value); setEditing(true) } }}
+        >
+          {value || '—'}
+        </div>
+      )}
     </div>
   )
 }
 
-interface Props {
-  record: Rec
-  recallDate: string
-  recallTime: string
-  onRecallDateChange?: (v: string) => void
-  onRecallTimeChange?: (v: string) => void
-  disabled?: boolean
-}
-
-export function ListMainDetail({
-  record,
-  recallDate,
-  recallTime,
-  onRecallDateChange,
-  onRecallTimeChange,
+function InlinePhone({
+  label,
+  phones,
+  onSave,
   disabled,
-}: Props) {
-  const phones = (record.phone_numbers as string[] | null) ?? []
+}: {
+  label: string
+  phones: string[]
+  onSave?: (v: string[]) => Promise<void>
+  disabled?: boolean
+}) {
+  const [draft, setDraft] = useState(phones)
+  const [flash, setFlash] = useState(false)
+
+  async function save(next: string[]) {
+    setDraft(next)
+    const cleaned = next.filter(Boolean)
+    try {
+      await onSave?.(cleaned)
+      setFlash(true)
+      setTimeout(() => setFlash(false), 800)
+    } catch { /* noop */ }
+  }
+
+  function update(i: number, v: string) {
+    const next = [...draft]
+    next[i] = v
+    setDraft(next)
+  }
+
+  async function blur(i: number) {
+    const cleaned = draft.filter(Boolean)
+    if (JSON.stringify(cleaned) !== JSON.stringify(phones)) {
+      await save(draft)
+    }
+  }
 
   return (
     <div
-      className="shrink-0 border-b"
-      style={{ background: 'var(--color-white)', borderColor: 'var(--color-gray-200)' }}
+      className="flex flex-col min-w-0"
+      style={{ background: flash ? '#dcfce7' : undefined, transition: 'background 0.3s' }}
     >
-      {/* Row 1: 会社名 / 代表名 / 役職 / 都道府県 */}
       <div
-        className="grid divide-x divide-gray-200 border-b border-gray-200"
-        style={{ gridTemplateColumns: '3fr 2fr 1.2fr 1.5fr' }}
+        className="text-[9px] font-medium px-1.5 py-0.5 border-b"
+        style={{
+          background: 'var(--color-gray-100)',
+          borderColor: 'var(--color-gray-200)',
+          color: 'var(--color-gray-500)',
+        }}
       >
-        <Field label="会社名">{record.company_name as string}</Field>
-        <Field label="代表名">{record.representative_name as string}</Field>
-        <Field label="役職">{record.title as string}</Field>
-        <Field label="都道府県">{record.prefecture as string}</Field>
+        {label}
       </div>
+      <div className="px-1.5 py-1 flex flex-col gap-0.5">
+        {draft.map((p, i) => (
+          <input
+            key={i}
+            type="tel"
+            value={p}
+            disabled={disabled}
+            onChange={(e) => update(i, e.target.value)}
+            onBlur={() => blur(i)}
+            className="text-[11px] tabular-nums outline-none bg-transparent w-full border-b border-dashed"
+            style={{ borderColor: 'var(--color-gray-200)', color: 'var(--color-gray-900)' }}
+          />
+        ))}
+        {!disabled && (
+          <button
+            type="button"
+            onClick={() => setDraft([...draft, ''])}
+            className="text-[9px] self-start mt-0.5"
+            style={{ color: 'var(--color-blue)' }}
+          >
+            ＋追加
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
 
-      {/* Row 2: 電話番号 / メール / 住所 */}
-      <div
-        className="grid divide-x divide-gray-200 border-b border-gray-200"
-        style={{ gridTemplateColumns: '2fr 2fr 4fr' }}
-      >
-        <Field label="電話番号">
-          <div className="flex flex-col tabular-nums">
-            {phones.length > 0
-              ? phones.map((p, i) => <span key={i}>{p}</span>)
-              : <span style={{ color: 'var(--color-gray-300)' }}>—</span>}
-          </div>
-        </Field>
-        <Field label="会社mail">{record.company_email as string}</Field>
-        <Field label="住所">{record.address as string}</Field>
-      </div>
+function InlineCheckList({
+  label,
+  options,
+  value,
+  onSave,
+  disabled,
+}: {
+  label: string
+  options: string[]
+  value: string[]
+  onSave?: (v: string[]) => Promise<void>
+  disabled?: boolean
+}) {
+  const [draft, setDraft] = useState(value)
+  const [flash, setFlash] = useState(false)
 
-      {/* Row 3: 再コール日（編集可） / 再コール時刻（編集可） */}
+  async function toggle(opt: string) {
+    const next = draft.includes(opt) ? draft.filter((x) => x !== opt) : [...draft, opt]
+    setDraft(next)
+    try {
+      await onSave?.(next)
+      setFlash(true)
+      setTimeout(() => setFlash(false), 800)
+    } catch { /* noop */ }
+  }
+
+  return (
+    <div
+      className="flex flex-col min-w-0"
+      style={{ background: flash ? '#dcfce7' : undefined, transition: 'background 0.3s' }}
+    >
       <div
-        className="grid divide-x divide-gray-200"
-        style={{ gridTemplateColumns: '2fr 2fr' }}
+        className="text-[9px] font-medium px-1.5 py-0.5 border-b"
+        style={{
+          background: 'var(--color-gray-100)',
+          borderColor: 'var(--color-gray-200)',
+          color: 'var(--color-gray-500)',
+        }}
       >
-        <EditField
-          label="再コール日"
-          value={recallDate}
-          type="date"
-          onChange={onRecallDateChange}
+        {label}
+      </div>
+      <div className="px-1.5 py-1 flex flex-wrap gap-1.5">
+        {options.map((opt) => (
+          <label key={opt} className="flex items-center gap-1 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={draft.includes(opt)}
+              disabled={disabled}
+              onChange={() => toggle(opt)}
+              className="accent-teal-600"
+            />
+            <span className="text-[10px]" style={{ color: 'var(--color-gray-700)' }}>{opt}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function InlineCheckbox({
+  label,
+  value,
+  onSave,
+  disabled,
+}: {
+  label: string
+  value: boolean
+  onSave?: (v: boolean) => Promise<void>
+  disabled?: boolean
+}) {
+  const [draft, setDraft] = useState(value)
+  const [flash, setFlash] = useState(false)
+
+  async function toggle() {
+    const next = !draft
+    setDraft(next)
+    try {
+      await onSave?.(next)
+      setFlash(true)
+      setTimeout(() => setFlash(false), 800)
+    } catch { setDraft(value) }
+  }
+
+  return (
+    <div
+      className="flex flex-col min-w-0"
+      style={{ background: flash ? '#dcfce7' : undefined, transition: 'background 0.3s' }}
+    >
+      <div
+        className="text-[9px] font-medium px-1.5 py-0.5 border-b"
+        style={{
+          background: 'var(--color-gray-100)',
+          borderColor: 'var(--color-gray-200)',
+          color: 'var(--color-gray-500)',
+        }}
+      >
+        {label}
+      </div>
+      <div className="px-1.5 py-1">
+        <input
+          type="checkbox"
+          checked={draft}
           disabled={disabled}
-        />
-        <EditField
-          label="再コール時刻"
-          value={recallTime}
-          onChange={onRecallTimeChange}
-          disabled={disabled}
+          onChange={toggle}
+          className="accent-teal-600"
         />
       </div>
+    </div>
+  )
+}
+
+function InlineRadio({
+  label,
+  options,
+  value,
+  onSave,
+  disabled,
+}: {
+  label: string
+  options: string[]
+  value: string
+  onSave?: (v: string) => Promise<void>
+  disabled?: boolean
+}) {
+  const [draft, setDraft] = useState(value)
+  const [flash, setFlash] = useState(false)
+
+  async function pick(v: string) {
+    setDraft(v)
+    try {
+      await onSave?.(v)
+      setFlash(true)
+      setTimeout(() => setFlash(false), 800)
+    } catch { setDraft(value) }
+  }
+
+  return (
+    <div
+      className="flex flex-col min-w-0"
+      style={{ background: flash ? '#dcfce7' : undefined, transition: 'background 0.3s' }}
+    >
+      <div
+        className="text-[9px] font-medium px-1.5 py-0.5 border-b"
+        style={{
+          background: 'var(--color-gray-100)',
+          borderColor: 'var(--color-gray-200)',
+          color: 'var(--color-gray-500)',
+        }}
+      >
+        {label}
+      </div>
+      <div className="px-1.5 py-1 flex gap-2 flex-wrap">
+        {options.map((opt) => (
+          <label key={opt} className="flex items-center gap-1 cursor-pointer">
+            <input
+              type="radio"
+              name={`radio-${label}`}
+              checked={draft === opt}
+              disabled={disabled}
+              onChange={() => pick(opt)}
+              className="accent-teal-600"
+            />
+            <span className="text-[10px]" style={{ color: 'var(--color-gray-700)' }}>{opt}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Section wrapper ─────────────────────────────────────────────
+
+function Section({
+  title,
+  children,
+}: {
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="border-b" style={{ borderColor: 'var(--color-gray-200)' }}>
+      <div
+        className="text-[10px] font-bold px-2 py-1 uppercase tracking-wider"
+        style={{
+          color: '#0D9488',
+          background: '#f0fdfa',
+          borderLeft: '3px solid #0D9488',
+        }}
+      >
+        {title}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+// ── Grid row ────────────────────────────────────────────────────
+
+function GridRow({
+  cols,
+  children,
+}: {
+  cols: string
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      className="grid divide-x divide-gray-200 border-b border-gray-200"
+      style={{ gridTemplateColumns: cols }}
+    >
+      {children}
+    </div>
+  )
+}
+
+// ── Main component ──────────────────────────────────────────────
+
+interface Props {
+  record: Rec
+  disabled?: boolean
+  onSave: (key: string, value: unknown) => Promise<void>
+  primaryLeadId: string | null
+  leadNewcomerFlag: string
+  onSaveLeadNewcomer: (value: string) => Promise<void>
+}
+
+const HP_OPTIONS = ['あり', 'なし', '不明']
+
+export function ListMainDetail({
+  record,
+  disabled,
+  onSave,
+  primaryLeadId,
+  leadNewcomerFlag,
+  onSaveLeadNewcomer,
+}: Props) {
+  const phones = (record.phone_numbers as string[] | null) ?? []
+
+  const s = (key: string) => (record[key] as string) ?? ''
+
+  return (
+    <div
+      className="shrink-0 border-b overflow-y-auto"
+      style={{
+        background: 'var(--color-white)',
+        borderColor: 'var(--color-gray-200)',
+        maxHeight: '40vh',
+      }}
+    >
+      <Section title="基本情報">
+        <GridRow cols="1fr 1fr">
+          <InlineText label="顧客ID" value={s('customer_id')} disabled={true}
+            onSave={undefined} />
+          <InlineText
+            label="新人フラグ"
+            value={leadNewcomerFlag}
+            disabled={disabled || !primaryLeadId}
+            onSave={async (v) => { await onSaveLeadNewcomer(v) }}
+          />
+        </GridRow>
+        <GridRow cols="3fr 2fr 1.2fr 1.5fr">
+          <InlineText label="会社名" value={s('company_name')} disabled={disabled}
+            onSave={(v) => onSave('company_name', v)} />
+          <InlineText label="代表名" value={s('representative_name')} disabled={disabled}
+            onSave={(v) => onSave('representative_name', v)} />
+          <InlineText label="役職" value={s('title')} disabled={disabled}
+            onSave={(v) => onSave('title', v)} />
+          <InlineText label="都道府県" value={s('prefecture')} disabled={disabled}
+            onSave={(v) => onSave('prefecture', v)} />
+        </GridRow>
+        <GridRow cols="1fr 2fr 3fr">
+          <InlineText label="業種" value={s('industry')} disabled={disabled}
+            onSave={(v) => onSave('industry', v)} />
+          <InlineText label="住所" value={s('address')} disabled={disabled}
+            onSave={(v) => onSave('address', v)} />
+          <InlineText label="会社メール" value={s('company_email')} disabled={disabled}
+            onSave={(v) => onSave('company_email', v)} />
+        </GridRow>
+        <GridRow cols="1fr 1fr 1fr 1fr">
+          <InlineText label="営業開始時間" value={s('business_start_time')} disabled={disabled}
+            onSave={(v) => onSave('business_start_time', v)} />
+          <InlineText label="営業終了時間" value={s('business_end_time')} disabled={disabled}
+            onSave={(v) => onSave('business_end_time', v)} />
+          <InlineText label="ホームページURL" value={s('homepage_url')} disabled={disabled}
+            onSave={(v) => onSave('homepage_url', v)} />
+          <InlineText label="担当ZOOM" value={s('zoom_url')} disabled={disabled}
+            onSave={(v) => onSave('zoom_url', v)} />
+        </GridRow>
+      </Section>
+
+      <Section title="連絡先">
+        <GridRow cols="2fr 1fr">
+          <InlinePhone
+            label="電話番号"
+            phones={phones}
+            disabled={disabled}
+            onSave={(v) => onSave('phone_numbers', v)}
+          />
+          <InlineRadio
+            label="ホームページ有無"
+            options={HP_OPTIONS}
+            value={s('homepage_exists')}
+            disabled={disabled}
+            onSave={(v) => onSave('homepage_exists', v)}
+          />
+        </GridRow>
+      </Section>
+
+      <Section title="再コール・商談">
+        <GridRow cols="1fr 1fr 1fr 1fr">
+          <InlineText label="再コール日" value={s('recall_date')} type="date"
+            disabled={disabled} onSave={(v) => onSave('recall_date', v)} />
+          <InlineText label="再コール時刻" value={s('recall_time')}
+            disabled={disabled} onSave={(v) => onSave('recall_time', v)} />
+          <InlineText label="商談日" value={s('meeting_date')} type="date"
+            disabled={disabled} onSave={(v) => onSave('meeting_date', v)} />
+          <InlineText label="商談時刻" value={s('meeting_time')}
+            disabled={disabled} onSave={(v) => onSave('meeting_time', v)} />
+        </GridRow>
+      </Section>
     </div>
   )
 }

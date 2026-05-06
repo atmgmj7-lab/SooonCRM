@@ -18,6 +18,7 @@ export async function GET(request: Request) {
   const to           = searchParams.get('to')           ?? ''
   const since        = searchParams.get('since')        ?? ''
   const until        = searchParams.get('until')        ?? ''
+  const tab          = searchParams.get('tab')           ?? 'all'
 
   const supabase = createAdminClient()
 
@@ -51,6 +52,8 @@ export async function GET(request: Request) {
   if (to)                      mainQuery = mainQuery.lte('inquiry_at', to + 'T23:59:59Z')
   if (since)                   mainQuery = mainQuery.gte('inquiry_date', since)
   if (until)                   mainQuery = mainQuery.lte('inquiry_date', until)
+  if (tab === 'new')             mainQuery = mainQuery.eq('status', '新規')
+  if (tab === 'done')            mainQuery = mainQuery.neq('status', '新規')
 
   const { data: leads, count, error } = await mainQuery
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -70,8 +73,21 @@ export async function GET(request: Request) {
   if (to)                      summaryQuery = summaryQuery.lte('inquiry_at', to + 'T23:59:59Z')
   if (since)                   summaryQuery = summaryQuery.gte('inquiry_date', since)
   if (until)                   summaryQuery = summaryQuery.lte('inquiry_date', until)
+  if (tab === 'new')             summaryQuery = summaryQuery.eq('status', '新規')
+  if (tab === 'done')            summaryQuery = summaryQuery.neq('status', '新規')
 
   const { data: summaryData } = await summaryQuery
+
+  let newLeadCountQuery = supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', TENANT_ID)
+    .or('phone_number.not.is.null,company_name.not.is.null,representative_name.not.is.null,ad_name.not.is.null')
+    .eq('status', '新規')
+  if (q) newLeadCountQuery = newLeadCountQuery.or(
+    `company_name.ilike.%${q}%,representative_name.ilike.%${q}%,phone_number.ilike.%${q}%`,
+  )
+  const { count: newLeadCount } = await newLeadCountQuery
 
   const appoCount      = summaryData?.filter(l => l.appo_at !== null).length ?? 0
   const wonCount       = summaryData?.filter(l => l.status === '受注').length ?? 0
@@ -98,5 +114,6 @@ export async function GET(request: Request) {
     },
     total:   count ?? 0,
     hasMore: (count ?? 0) > pageNum * limitNum,
+    newLeadCount: newLeadCount ?? 0,
   })
 }

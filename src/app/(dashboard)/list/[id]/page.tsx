@@ -9,6 +9,7 @@ type Call = {
   call_end_time: string | null
   call_duration_minutes: number | null
   agent_name: string | null
+  newcomer_flag: string | null
   call_result: string | null
   call_category: string | null
   appo_detail: string | null
@@ -18,6 +19,8 @@ type Lead = {
   id: string
   inquiry_date: string | null
   ad_name: string | null
+  status: string | null
+  newcomer_flag: string | null
   last_call_result: string | null
   order_closed: boolean | null
   jitsuyo_ok: boolean | null
@@ -45,7 +48,7 @@ export default async function ListDetailPage({
     supabase
       .from('calls')
       .select(
-        'id,call_date,call_start_time,call_end_time,call_duration_minutes,agent_name,call_result,call_category,appo_detail'
+        'id,call_date,call_start_time,call_end_time,call_duration_minutes,agent_name,newcomer_flag,call_result,call_category,appo_detail'
       )
       .eq('list_record_id', id)
       .order('call_date', { ascending: false, nullsFirst: false })
@@ -54,7 +57,7 @@ export default async function ListDetailPage({
     supabase
       .from('leads')
       .select(
-        'id,inquiry_date,ad_name,last_call_result,order_closed,jitsuyo_ok,total_revenue'
+        'id,inquiry_date,ad_name,status,newcomer_flag,last_call_result,order_closed,jitsuyo_ok,total_revenue'
       )
       .eq('list_record_id', id)
       .order('inquiry_date', { ascending: false, nullsFirst: false })
