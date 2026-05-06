@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { AppoStatusSelect } from '@/components/shared/AppoStatusSelect'
 
 type Call = {
   id: string
@@ -13,6 +14,7 @@ type Call = {
   call_result: string | null
   call_category: string | null
   appo_detail: string | null
+  lead_id: string | null
 }
 
 type Lead = {
@@ -23,6 +25,7 @@ type Lead = {
   order_closed: boolean | null
   jitsuyo_ok: boolean | null
   total_revenue: number | null
+  appo_detail_status?: string | null
 }
 
 function ResultBadge({ result }: { result: string | null }) {
@@ -44,7 +47,21 @@ function ResultBadge({ result }: { result: string | null }) {
   )
 }
 
-export function HistoryTabs({ calls, leads }: { calls: Call[]; leads: Lead[] }) {
+export function HistoryTabs({
+  calls,
+  leads,
+  listRecordId,
+  primaryLeadId,
+  primaryAppoDetailStatus,
+  onAppoDetailChange,
+}: {
+  calls: Call[]
+  leads: Lead[]
+  listRecordId: string
+  primaryLeadId: string | null
+  primaryAppoDetailStatus: string | null
+  onAppoDetailChange: (detail: string | null, affectedLeadId: string | null) => void
+}) {
   const [tab, setTab] = useState<'calls' | 'leads'>('calls')
 
   return (
@@ -64,6 +81,7 @@ export function HistoryTabs({ calls, leads }: { calls: Call[]; leads: Lead[] }) 
           return (
             <button
               key={key}
+              type="button"
               onClick={() => setTab(key)}
               className="px-4 py-1.5 text-[11px] font-medium border-b-2 transition-colors"
               style={{
@@ -77,12 +95,23 @@ export function HistoryTabs({ calls, leads }: { calls: Call[]; leads: Lead[] }) 
         })}
       </div>
 
-      <div className="overflow-y-auto flex-1 min-h-0">
+      <div className="overflow-y-auto overflow-x-auto flex-1 min-h-0">
         {tab === 'calls' ? (
-          <table className="w-full text-[10px] border-collapse">
+          <table className="w-full text-[10px] border-collapse min-w-[720px]">
             <thead className="sticky top-0 z-10" style={{ background: 'var(--color-gray-100)' }}>
               <tr>
-                {['架電日', '開始', '終了', '対応者', '新人フラグ', '結果', 'カテゴリ', 'アポ詳細', '時間(分)'].map((h) => (
+                {[
+                  '架電日',
+                  '開始',
+                  '終了',
+                  '対応者',
+                  '新人フラグ',
+                  '結果',
+                  'アポOK内訳',
+                  'カテゴリ',
+                  'アポ詳細',
+                  '時間(分)',
+                ].map((h) => (
                   <th
                     key={h}
                     className="text-left px-2 py-1 font-medium whitespace-nowrap border-b"
@@ -96,7 +125,7 @@ export function HistoryTabs({ calls, leads }: { calls: Call[]; leads: Lead[] }) 
             <tbody>
               {calls.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-2 py-6 text-center" style={{ color: 'var(--color-gray-400)' }}>
+                  <td colSpan={10} className="px-2 py-6 text-center" style={{ color: 'var(--color-gray-400)' }}>
                     コール履歴なし
                   </td>
                 </tr>
@@ -114,7 +143,17 @@ export function HistoryTabs({ calls, leads }: { calls: Call[]; leads: Lead[] }) 
                   <td className="px-2 py-0.5 tabular-nums whitespace-nowrap" style={{ color: 'var(--color-gray-500)' }}>{c.call_end_time ?? ''}</td>
                   <td className="px-2 py-0.5 whitespace-nowrap" style={{ color: 'var(--color-gray-800)' }}>{c.agent_name ?? ''}</td>
                   <td className="px-2 py-0.5 whitespace-nowrap" style={{ color: 'var(--color-gray-600)' }}>{c.newcomer_flag ?? ''}</td>
-                  <td className="px-2 py-0.5"><ResultBadge result={c.call_result} /></td>
+                  <td className="px-2 py-0.5 whitespace-nowrap"><ResultBadge result={c.call_result} /></td>
+                  <td className="px-2 py-0.5 whitespace-nowrap align-middle">
+                    <AppoStatusSelect
+                      leadId={c.lead_id ?? primaryLeadId ?? undefined}
+                      listRecordId={listRecordId}
+                      currentStatus={c.call_result}
+                      currentDetail={primaryAppoDetailStatus}
+                      size="sm"
+                      onUpdate={(detail) => onAppoDetailChange(detail, c.lead_id ?? primaryLeadId)}
+                    />
+                  </td>
                   <td className="px-2 py-0.5 whitespace-nowrap" style={{ color: 'var(--color-gray-500)' }}>{c.call_category ?? ''}</td>
                   <td className="px-2 py-0.5 max-w-[180px] truncate" style={{ color: 'var(--color-gray-500)' }} title={c.appo_detail ?? ''}>{c.appo_detail ?? ''}</td>
                   <td className="px-2 py-0.5 tabular-nums text-right whitespace-nowrap" style={{ color: 'var(--color-gray-400)' }}>

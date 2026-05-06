@@ -20,6 +20,7 @@ type Call = {
   call_result: string | null
   call_category: string | null
   appo_detail: string | null
+  lead_id: string | null
 }
 
 type Lead = {
@@ -338,7 +339,9 @@ export function ListDetailClient({
             )}
             <ListAttrHeader
               record={record}
+              listRecordId={listRecordId}
               statusLead={statusLead}
+              appoDetailStatus={primaryLead?.appo_detail_status ?? null}
               onStatusChange={(s) => {
                 if (!primaryLead) return
                 setLeadsLocal((prev) =>
@@ -346,6 +349,21 @@ export function ListDetailClient({
                     l.id === primaryLead.id ? { ...l, status: s, last_call_result: s } : l,
                   ),
                 )
+              }}
+              onAppoDetailChange={(detail) => {
+                if (!primaryLead) return
+                setLeadsLocal((prev) =>
+                  prev.map((l) =>
+                    l.id === primaryLead.id ? { ...l, appo_detail_status: detail } : l,
+                  ),
+                )
+                setRecord((prev) => ({
+                  ...prev,
+                  chosei: detail === '調整中',
+                  saiyo_ok: detail === '採用OK',
+                  saiyo_ng: detail === '採用NG',
+                  juchu: detail === '受注',
+                }))
               }}
             />
           </div>
@@ -375,7 +393,30 @@ export function ListDetailClient({
               className="min-h-0 min-w-0"
               style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             >
-              <HistoryTabs calls={calls} leads={leadsLocal} />
+              <HistoryTabs
+                calls={calls}
+                leads={leadsLocal}
+                listRecordId={listRecordId}
+                primaryLeadId={primaryLead?.id ?? null}
+                primaryAppoDetailStatus={primaryLead?.appo_detail_status ?? null}
+                onAppoDetailChange={(detail, affectedLeadId) => {
+                  const tid = affectedLeadId ?? primaryLead?.id
+                  if (tid) {
+                    setLeadsLocal((prev) =>
+                      prev.map((l) =>
+                        l.id === tid ? { ...l, appo_detail_status: detail } : l,
+                      ),
+                    )
+                  }
+                  setRecord((prev) => ({
+                    ...prev,
+                    chosei: detail === '調整中',
+                    saiyo_ok: detail === '採用OK',
+                    saiyo_ng: detail === '採用NG',
+                    juchu: detail === '受注',
+                  }))
+                }}
+              />
             </div>
             <div
               className="flex flex-col gap-2 min-h-0"

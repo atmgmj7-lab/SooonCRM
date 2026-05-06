@@ -10,11 +10,17 @@ export async function PATCH(
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const { status, appo_detail_status } = (await req.json()) as {
-    status?: string
-    appo_detail_status?: string | null
+  let body: { appo_detail_status?: string | null }
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
-  if (!status) return NextResponse.json({ error: 'status required' }, { status: 400 })
+
+  const { appo_detail_status } = body
+  if (appo_detail_status === undefined) {
+    return NextResponse.json({ error: 'appo_detail_status required' }, { status: 400 })
+  }
 
   const supabase = createAdminClient()
 
@@ -27,18 +33,20 @@ export async function PATCH(
 
   if (!member) return NextResponse.json({ error: 'No tenant' }, { status: 403 })
 
-  const updatePayload: Record<string, unknown> = {
-    status,
-    last_call_result: status,
-    updated_at: new Date().toISOString(),
-  }
-  if (appo_detail_status !== undefined) {
-    updatePayload.appo_detail_status = appo_detail_status
-  }
+  const v =
+    appo_detail_status === null || String(appo_detail_status).trim() === ''
+      ? null
+      : String(appo_detail_status).trim()
 
   const { error } = await supabase
-    .from('leads')
-    .update(updatePayload)
+    .from('list_records')
+    .update({
+      chosei: v === '調整中',
+      saiyo_ok: v === '採用OK',
+      saiyo_ng: v === '採用NG',
+      juchu: v === '受注',
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', id)
     .eq('tenant_id', member.tenant_id)
 

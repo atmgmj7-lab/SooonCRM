@@ -1,6 +1,7 @@
 'use client'
 
 import { StatusSelect } from './StatusSelect'
+import { AppoStatusSelect } from '@/components/shared/AppoStatusSelect'
 
 type Rec = Record<string, unknown>
 
@@ -19,12 +20,18 @@ function AttrCell({ label, value }: { label: string; value: string | null | unde
 
 export function ListAttrHeader({
   record,
+  listRecordId,
   statusLead,
+  appoDetailStatus,
   onStatusChange,
+  onAppoDetailChange,
 }: {
   record: Rec
+  listRecordId: string
   statusLead?: { id: string; status: string } | null
+  appoDetailStatus?: string | null
   onStatusChange?: (s: string) => void
+  onAppoDetailChange?: (detail: string | null) => void
 }) {
   const listCreatedAt = (record.list_created_at as string | null)
     ?.slice(0, 16)
@@ -46,12 +53,22 @@ export function ListAttrHeader({
           ステータス
         </span>
         {statusLead ? (
-          <StatusSelect
-            leadId={statusLead.id}
-            value={statusValue}
-            size="sm"
-            onUpdate={onStatusChange}
-          />
+          <div className="flex items-center gap-2 flex-wrap">
+            <StatusSelect
+              leadId={statusLead.id}
+              value={statusValue}
+              size="sm"
+              onUpdate={onStatusChange}
+            />
+            <AppoStatusSelect
+              leadId={statusLead.id}
+              listRecordId={listRecordId}
+              currentStatus={statusValue}
+              currentDetail={appoDetailStatus ?? null}
+              size="sm"
+              onUpdate={onAppoDetailChange}
+            />
+          </div>
         ) : (
           <span className="text-[11px]" style={{ color: 'var(--color-gray-300)' }}>—</span>
         )}

@@ -13,6 +13,7 @@ type Call = {
   call_result: string | null
   call_category: string | null
   appo_detail: string | null
+  lead_id: string | null
 }
 
 type Lead = {
@@ -54,7 +55,7 @@ export default async function ListDetailPage({
     supabase
       .from('calls')
       .select(
-        'id,call_date,call_start_time,call_end_time,call_duration_minutes,agent_name,newcomer_flag,call_result,call_category,appo_detail'
+        'id,call_date,call_start_time,call_end_time,call_duration_minutes,agent_name,newcomer_flag,call_result,call_category,appo_detail,lead_id'
       )
       .eq('list_record_id', id)
       .order('call_date', { ascending: false, nullsFirst: false })

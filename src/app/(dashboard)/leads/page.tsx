@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Link2 } from 'lucide-react'
 import { StatusSelect } from '@/components/list/StatusSelect'
+import { AppoStatusSelect } from '@/components/shared/AppoStatusSelect'
 
 type Lead = {
   id: string
@@ -41,6 +42,7 @@ const COL_WIDTHS = {
   phone_number:       120,
   elapsed:             72,
   status:             120,
+  appo_detail:        200,
 } as const
 
 const TOTAL_WIDTH = Object.values(COL_WIDTHS).reduce((a, b) => a + b, 0)
@@ -151,7 +153,7 @@ export default function LeadsPage() {
   }
 
   const w = COL_WIDTHS
-  const colCount = Object.keys(COL_WIDTHS).length + 1
+  const colCount = Object.keys(COL_WIDTHS).length
 
   return (
     <div className="p-6" style={{ background: 'var(--color-gray-50)', minHeight: '100%' }}>
@@ -207,12 +209,16 @@ export default function LeadsPage() {
       </div>
 
       <div
-        className="rounded-xl border overflow-hidden overflow-x-auto"
+        className="rounded-xl border overflow-x-auto w-full"
         style={{ borderColor: 'var(--color-gray-200)', background: 'var(--color-white)' }}
       >
         <table
-          className="text-[11px] border-collapse"
-          style={{ tableLayout: 'fixed', width: TOTAL_WIDTH, minWidth: TOTAL_WIDTH }}
+          className="text-[11px] border-collapse w-full"
+          style={{
+            tableLayout: 'fixed',
+            width: '100%',
+            minWidth: Math.max(1200, TOTAL_WIDTH),
+          }}
         >
           <thead>
             <tr style={{ background: 'var(--color-gray-50)', borderBottom: '1px solid var(--color-gray-200)' }}>
@@ -226,12 +232,13 @@ export default function LeadsPage() {
               <Th label="経過日数" w={w.elapsed} />
               <Th label="対応" w={w.status} />
               <th
+                className="px-3 py-2.5 text-[11px] font-medium text-left whitespace-nowrap border-l-2"
                 style={{
-                  padding: '8px 12px',
-                  fontSize: 11,
-                  color: '#6B7280',
-                  whiteSpace: 'nowrap',
-                  borderLeft: '2px solid #E5E7EB',
+                  color: 'var(--color-gray-600)',
+                  width: w.appo_detail,
+                  minWidth: w.appo_detail,
+                  maxWidth: w.appo_detail,
+                  borderColor: 'var(--color-gray-200)',
                 }}
               >
                 アポOK内訳
@@ -290,40 +297,31 @@ export default function LeadsPage() {
                     }}
                   />
                 </td>
-                <td style={{ padding: '8px 12px', borderLeft: '2px solid #E5E7EB' }}>
-                  {lead.appo_detail_status ? (
-                    <span
-                      style={{
-                        padding: '2px 8px',
-                        borderRadius: 12,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        background:
-                          lead.appo_detail_status === '受注'
-                            ? '#D1FAE5'
-                            : lead.appo_detail_status === '採用OK'
-                              ? '#DBEAFE'
-                              : lead.appo_detail_status === '採用NG'
-                                ? '#FEE2E2'
-                                : lead.appo_detail_status === '調整中'
-                                  ? '#FEF3C7'
-                                  : '#F3F4F6',
-                        color:
-                          lead.appo_detail_status === '受注'
-                            ? '#065F46'
-                            : lead.appo_detail_status === '採用OK'
-                              ? '#1E40AF'
-                              : lead.appo_detail_status === '採用NG'
-                                ? '#991B1B'
-                                : lead.appo_detail_status === '調整中'
-                                  ? '#92400E'
-                                  : '#6B7280',
+                <td
+                  className="px-3 py-1.5 align-middle border-l-2 whitespace-nowrap"
+                  style={{
+                    width: w.appo_detail,
+                    minWidth: w.appo_detail,
+                    maxWidth: w.appo_detail,
+                    borderColor: 'var(--color-gray-200)',
+                  }}
+                >
+                  {(lead.status ?? lead.last_call_result) === 'アポOK' ? (
+                    <AppoStatusSelect
+                      leadId={lead.id}
+                      currentStatus={lead.status ?? lead.last_call_result}
+                      currentDetail={lead.appo_detail_status}
+                      size="sm"
+                      onUpdate={(detail) => {
+                        setLeads((prev) =>
+                          prev.map((l) => (l.id === lead.id ? { ...l, appo_detail_status: detail } : l)),
+                        )
                       }}
-                    >
-                      {lead.appo_detail_status}
-                    </span>
+                    />
                   ) : (
-                    <span style={{ color: '#E5E7EB' }}>—</span>
+                    <span className="text-[11px]" style={{ color: 'var(--color-gray-300)' }}>
+                      —
+                    </span>
                   )}
                 </td>
               </tr>
