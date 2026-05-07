@@ -29,7 +29,6 @@ export async function PATCH(
 
   const updatePayload: Record<string, unknown> = {
     status,
-    last_call_result: status,
     updated_at: new Date().toISOString(),
   }
   if (appo_detail_status !== undefined) {

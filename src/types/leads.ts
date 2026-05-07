@@ -24,12 +24,10 @@ export type Lead = {
   form_q1: string | null
   form_q2: string | null
   form_q3: string | null
-  last_call_result: string | null
   call_count: number
   recall_date: string | null
   recall_time: string | null
   jitsuyo_ok: boolean
-  ichiyou_ng: boolean
   order_closed: boolean
   initial_fee: number | null
   monthly_fee: number | null
@@ -43,6 +41,8 @@ export type Lead = {
   appo_date?: string | null
   appo_time?: string | null
   appo_detail?: string | null
+  /** 受注フラグ（leads 列） */
+  juchu?: boolean | null
   imported_from_csv: boolean
   csv_row_number: number | null
   created_at: string
@@ -52,12 +52,10 @@ export type LeadManualFields = Pick<
   Lead,
   | 'status'
   | 'newcomer_flag'
-  | 'last_call_result'
   | 'call_count'
   | 'recall_date'
   | 'recall_time'
   | 'jitsuyo_ok'
-  | 'ichiyou_ng'
   | 'order_closed'
   | 'initial_fee'
   | 'monthly_fee'
@@ -68,17 +66,16 @@ export type LeadManualFields = Pick<
   | 'appo_date'
   | 'appo_time'
   | 'appo_detail'
+  | 'juchu'
 >
 
 export const MANUAL_LEAD_FIELDS: (keyof LeadManualFields)[] = [
   'status',
   'newcomer_flag',
-  'last_call_result',
   'call_count',
   'recall_date',
   'recall_time',
   'jitsuyo_ok',
-  'ichiyou_ng',
   'order_closed',
   'initial_fee',
   'monthly_fee',
@@ -89,16 +86,7 @@ export const MANUAL_LEAD_FIELDS: (keyof LeadManualFields)[] = [
   'appo_date',
   'appo_time',
   'appo_detail',
-]
-
-export const LAST_CALL_RESULT_OPTIONS = [
-  '',
-  'アポOK',
-  'NG',
-  '留守',
-  '対象外',
-  '再コール',
-  '思案中',
+  'juchu',
 ]
 
 export type AdSetLeadStats = {
@@ -122,12 +110,11 @@ export const DEFAULT_CSV_MAPPING: Record<string, keyof Lead> = {
   'phone_number': 'phone_number',
   'メール': 'email_address',
   '詳細': 'lead_detail',
-  '最終架電結果': 'last_call_result',
+  '最終架電結果': 'status',
   'コール数': 'call_count',
   '再日': 'recall_date',
   '再時間': 'recall_time',
   '実用O': 'jitsuyo_ok',
-  '1用N': 'ichiyou_ng',
   '受注': 'order_closed',
   '初期': 'initial_fee',
   '月額': 'monthly_fee',

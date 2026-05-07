@@ -69,12 +69,13 @@ export async function POST(request: Request) {
     form_q1: row.form_q1 || null,
     form_q2: row.form_q2 || null,
     form_q3: row.form_q3 || null,
-    last_call_result: row.last_call_result || null,
+    status: (row.status && String(row.status).trim())
+      || (row.last_call_result && String(row.last_call_result).trim())
+      || '新規',
     call_count: parseIntOrNull(row.call_count ?? '') ?? 0,
     recall_date: normalizeDate(row.recall_date ?? ''),
     recall_time: row.recall_time || null,
     jitsuyo_ok: parseBool(row.jitsuyo_ok ?? ''),
-    ichiyou_ng: parseBool(row.ichiyou_ng ?? ''),
     order_closed: parseBool(row.order_closed ?? ''),
     initial_fee: parseIntOrNull(row.initial_fee ?? ''),
     monthly_fee: parseIntOrNull(row.monthly_fee ?? ''),

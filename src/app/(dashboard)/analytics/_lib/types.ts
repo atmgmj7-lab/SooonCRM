@@ -3,18 +3,16 @@ export type LeadRow = {
   list_record_id?: string | null   // calls との紐づけキー
   ad_name: string | null
   status: string
-  last_call_result: string | null
   inquiry_at: string
   appo_detail_status?: string | null
+  juchu?: boolean | null
   appo_date?: string | null
   appo_time?: string | null
   appo_detail?: string | null
   list_created_at?: string | null  // FM同期リードの問い合わせ日補完用
   jitsuyo_ok: boolean | null
-  ichiyou_ng: boolean | null
   order_closed: boolean | null
   deal_amount: number | null
-  adjusting: boolean | null
   source_data?: Record<string, unknown> | null
   initial_fee?: number | null
   monthly_fee?: number | null

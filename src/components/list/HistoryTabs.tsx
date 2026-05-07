@@ -21,7 +21,7 @@ type Lead = {
   id: string
   inquiry_date: string | null
   ad_name: string | null
-  last_call_result: string | null
+  status: string | null
   order_closed: boolean | null
   jitsuyo_ok: boolean | null
   total_revenue: number | null
@@ -167,7 +167,7 @@ export function HistoryTabs({
           <table className="w-full text-[10px] border-collapse">
             <thead className="sticky top-0 z-10" style={{ background: 'var(--color-gray-100)' }}>
               <tr>
-                {['問い合わせ日', '広告名', '架電結果', '受注', '実用OK', '売上'].map((h) => (
+                {['問い合わせ日', '広告名', 'ステータス', '受注', '実用OK', '売上'].map((h) => (
                   <th
                     key={h}
                     className="text-left px-2 py-1 font-medium whitespace-nowrap border-b"
@@ -196,7 +196,7 @@ export function HistoryTabs({
                 >
                   <td className="px-2 py-0.5 tabular-nums whitespace-nowrap" style={{ color: 'var(--color-gray-800)' }}>{l.inquiry_date ?? ''}</td>
                   <td className="px-2 py-0.5 max-w-[200px] truncate" style={{ color: 'var(--color-gray-800)' }} title={l.ad_name ?? ''}>{l.ad_name ?? ''}</td>
-                  <td className="px-2 py-0.5 whitespace-nowrap" style={{ color: 'var(--color-gray-500)' }}>{l.last_call_result ?? ''}</td>
+                  <td className="px-2 py-0.5 whitespace-nowrap" style={{ color: 'var(--color-gray-500)' }}>{l.status ?? ''}</td>
                   <td className="px-2 py-0.5">
                     {l.order_closed && (
                       <span className="px-1 py-0.5 rounded text-[9px] font-medium" style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)' }}>受注</span>

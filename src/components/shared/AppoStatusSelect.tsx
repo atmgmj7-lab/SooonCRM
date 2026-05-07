@@ -12,7 +12,7 @@ export const APPO_DETAIL_OPTIONS = [
 interface Props {
   leadId?: string
   listRecordId?: string
-  /** leads.status または last_call_result / call_result */
+  /** leads.status または call_result（calls 一覧） */
   currentStatus: string | null
   currentDetail: string | null
   onUpdate?: (detail: string | null) => void

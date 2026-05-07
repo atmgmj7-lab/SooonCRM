@@ -23,7 +23,6 @@ type Lead = {
   ad_name: string | null
   status: string | null
   newcomer_flag: string | null
-  last_call_result: string | null
   order_closed: boolean | null
   jitsuyo_ok: boolean | null
   total_revenue: number | null
@@ -31,6 +30,7 @@ type Lead = {
   appo_date?: string | null
   appo_time?: string | null
   appo_detail?: string | null
+  juchu?: boolean | null
   source_data?: Record<string, unknown> | null
 }
 
@@ -64,7 +64,7 @@ export default async function ListDetailPage({
     supabase
       .from('leads')
       .select(
-        'id,inquiry_date,inquiry_at,ad_name,status,newcomer_flag,last_call_result,order_closed,jitsuyo_ok,total_revenue,appo_detail_status,appo_date,appo_time,appo_detail,source_data'
+        'id,inquiry_date,inquiry_at,ad_name,status,newcomer_flag,order_closed,jitsuyo_ok,total_revenue,appo_detail_status,appo_date,appo_time,appo_detail,juchu,source_data'
       )
       .eq('list_record_id', id)
       .order('inquiry_at', { ascending: false, nullsFirst: false })

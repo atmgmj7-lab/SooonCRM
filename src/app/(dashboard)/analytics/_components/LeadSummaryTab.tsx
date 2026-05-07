@@ -209,7 +209,7 @@ export function LeadSummaryTab({ cohortData, allAdNames }: Props) {
       )}
 
       <div style={{ marginTop: 12, fontSize: 10.5, color: '#9CA3AF' }}>
-        ※ calls と leads の紐づきは list_record_id を使用。紐づきがない場合は leads.status / last_call_result を参照。
+        ※ calls と leads の紐づきは list_record_id を使用。紐づきがない場合は leads.status を参照。
       </div>
     </div>
   )

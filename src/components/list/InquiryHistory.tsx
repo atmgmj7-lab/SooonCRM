@@ -2,7 +2,7 @@ type Lead = {
   id: string
   inquiry_date: string | null
   ad_name: string | null
-  last_call_result: string | null
+  status: string | null
   order_closed: boolean | null
 }
 
@@ -59,7 +59,7 @@ export function InquiryHistory({ leads }: { leads: Lead[] }) {
                     {l.ad_name ?? '—'}
                   </td>
                   <td className="px-2 py-0.5 whitespace-nowrap" style={{ width: '60px' }}>
-                    {l.last_call_result ? (
+                    {l.status ? (
                       <span
                         className="px-1 py-0.5 rounded text-[9px] font-medium"
                         style={{
@@ -71,7 +71,7 @@ export function InquiryHistory({ leads }: { leads: Lead[] }) {
                             : 'var(--color-gray-500)',
                         }}
                       >
-                        {l.last_call_result}
+                        {l.status}
                       </span>
                     ) : null}
                   </td>

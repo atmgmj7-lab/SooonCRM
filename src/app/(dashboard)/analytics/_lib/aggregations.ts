@@ -1,9 +1,9 @@
 /**
  * NOTE: calls と leads の紐づけは新規Webhook流入（source='meta_ads'）から開始。
- * 過去データ（source='other'）は last_call_result に結果が入るが lead_id 未紐づけのため、
+ * 過去データで lead_id が未紐づけのものは対象から外れる場合があるため、
  * 架電効率パネルは新規データのみを対象とする。
  *
- * ステータス判定: status を優先し、未設定/空の場合は last_call_result にフォールバック
+ * ステータス判定: leads.status を使用
  */
 
 import type { AdSummaryRow, MonthlyRow, MonthAdRow, CallEfficiencyRow, LeadRow, CallRow, CallRecord, KpiData, CallEfficiencyData } from './types'
@@ -53,7 +53,7 @@ export const DUPLICATE_STATUSES = ['重複']
 // ─────────────────────────────────────────────────────────
 
 const getStatus = (lead: LeadRow): string =>
-  lead.status || lead.last_call_result || ''
+  lead.status || ''
 
 const countStatus = (leads: LeadRow[], statuses: string[]): number =>
   leads.filter((l) => statuses.includes(getStatus(l))).length
@@ -171,7 +171,10 @@ export function aggregateByAd(leads: LeadRow[]): AdSummaryRow[] {
     const chosei    = countAppoDetail(group, APPO_CHOSEI)
     const saiyoOk   = countAppoDetail(group, APPO_SAIYO_OK)
     const saiyoNg   = countAppoDetail(group, APPO_SAIYO_NG)
-    const juchuAd   = countAppoDetail(group, APPO_JUCHU)
+    const juchuAd = group.filter(
+      (l) =>
+        APPO_JUCHU.includes((l.appo_detail_status ?? '').trim()) || l.juchu === true,
+    ).length
     const chakuza   = saiyoOk + juchuAd
     const rusu      = countStatus(group, ['留守'])
     const miCall    = countStatus(group, ['新規'])
@@ -268,7 +271,10 @@ export function aggregateByMonth(leads: LeadRow[]): MonthlyRow[] {
     const chosei   = countAppoDetail(group, APPO_CHOSEI)
     const saiyoOk  = countAppoDetail(group, APPO_SAIYO_OK)
     const saiyoNg  = countAppoDetail(group, APPO_SAIYO_NG)
-    const juchuM   = countAppoDetail(group, APPO_JUCHU)
+    const juchuM = group.filter(
+      (l) =>
+        APPO_JUCHU.includes((l.appo_detail_status ?? '').trim()) || l.juchu === true,
+    ).length
     const chakuza  = saiyoOk + juchuM
     const ng       = countStatus(group, NG_STATUSES)
     const taishogai = countStatus(group, TAISHOGAI_STATUSES)
@@ -341,7 +347,10 @@ export function aggregateByAdByMonth(leads: LeadRow[], adNames: string[]): Month
       const appo    = countStatus(group, APPO_STATUSES)
       const kanryo  = countStatus(group, KANRYO_STATUSES)
       const saiyoOkM = countAppoDetail(group, APPO_SAIYO_OK)
-      const juchuM2  = countAppoDetail(group, APPO_JUCHU)
+      const juchuM2 = group.filter(
+        (l) =>
+          APPO_JUCHU.includes((l.appo_detail_status ?? '').trim()) || l.juchu === true,
+      ).length
       const chakuza  = saiyoOkM + juchuM2
       const juchu    = juchuM2
       const totalRevenue = group.reduce((s, l) => s + (l.deal_amount ?? 0), 0)
@@ -499,7 +508,7 @@ export function buildCohortData(
             return db - da
           })[0]
 
-        const resultStr = latestCall?.call_result ?? lead.last_call_result ?? lead.status ?? ''
+        const resultStr = latestCall?.call_result ?? lead.status ?? ''
 
         if (KANRYO_STATUSES.includes(resultStr)) kanryo++
         if (APPO_STATUSES.includes(resultStr))   appo++

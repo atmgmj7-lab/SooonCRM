@@ -4,7 +4,7 @@ import type { LeadRow, AdSummaryRow, MonthlyRow, CallRecord } from './_lib/types
 import { AnalyticsClient } from './_components/AnalyticsClient'
 
 const TENANT_ID = 'dde9bea6-a017-49e6-a1b6-88494e1e3b4d'
-const LEADS_SELECT = 'id, list_record_id, ad_name, status, last_call_result, inquiry_at, list_created_at, jitsuyo_ok, ichiyou_ng, order_closed, deal_amount, adjusting, source_data, initial_fee, monthly_fee, appo_detail_status, appo_date, appo_time, appo_detail'
+const LEADS_SELECT = 'id, list_record_id, ad_name, status, inquiry_at, list_created_at, jitsuyo_ok, order_closed, deal_amount, source_data, initial_fee, monthly_fee, appo_detail_status, appo_date, appo_time, appo_detail, juchu'
 const PAGE_SIZE = 1000
 
 async function fetchAllLeads(supabase: Awaited<ReturnType<typeof createClient>>): Promise<LeadRow[]> {

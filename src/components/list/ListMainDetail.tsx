@@ -406,14 +406,14 @@ interface Props {
   appoLead: {
     id: string
     status: string | null
-    last_call_result: string | null
     appo_detail_status?: string | null
     appo_date?: string | null
     appo_time?: string | null
     appo_detail?: string | null
+    juchu?: boolean | null
     source_data?: Record<string, unknown> | null
   } | null
-  onPatchAppoLead: (patch: Record<string, string>) => Promise<void>
+  onPatchAppoLead: (patch: Record<string, string | boolean>) => Promise<void>
 }
 
 const HP_OPTIONS = ['あり', 'なし', '不明']
@@ -512,55 +512,6 @@ export function ListMainDetail({
             disabled={disabled} onSave={(v) => onSave('meeting_time', v)} />
         </GridRow>
       </Section>
-
-      {(record['chosei'] === true ||
-        record['saiyo_ok'] === true ||
-        record['saiyo_ng'] === true ||
-        record['juchu'] === true) && (
-        <section
-          style={{
-            background: '#fff',
-            border: '1px solid #D1FAE5',
-            borderRadius: 10,
-            padding: '14px 20px',
-            marginBottom: 16,
-          }}
-        >
-          <h3
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: '#065F46',
-              marginBottom: 12,
-              borderBottom: '1px solid #D1FAE5',
-              paddingBottom: 8,
-            }}
-          >
-            アポOK 内訳
-          </h3>
-          <div style={{ display: 'flex', gap: 24 }}>
-            {[
-              { label: '調整中', value: record['chosei'] === true, color: '#0D9488' },
-              { label: '採用OK', value: record['saiyo_ok'] === true, color: '#1D4ED8' },
-              { label: '採用NG', value: record['saiyo_ng'] === true, color: '#DC2626' },
-              { label: '受注', value: record['juchu'] === true, color: '#15803D' },
-            ].map((item) => (
-              <div key={item.label} style={{ textAlign: 'center' }}>
-                <div
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 700,
-                    color: item.value ? item.color : '#E5E7EB',
-                  }}
-                >
-                  {item.value ? '✓' : '—'}
-                </div>
-                <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{item.label}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
 
       {(function () {
@@ -662,26 +613,53 @@ export function ListMainDetail({
               >
                 アポ内訳ステータス
               </label>
-              <select
-                value={appoLead.appo_detail_status ?? ''}
-                disabled={disabled}
-                onChange={async (e) => {
-                  await onPatchAppoLead({ appo_detail_status: e.target.value })
-                }}
-                style={{
-                  width: '100%',
-                  padding: '6px 10px',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: 6,
-                  fontSize: 13,
-                }}
-              >
-                <option value="">選択してください</option>
-                <option value="調整中">調整中（商談日程調整中）</option>
-                <option value="採用OK">採用OK（商談着座済み）</option>
-                <option value="採用NG">採用NG（商談後NG）</option>
-                <option value="受注">受注（契約済み）</option>
-              </select>
+              <div className="flex flex-wrap items-center gap-3">
+                <select
+                  value={appoLead.appo_detail_status ?? ''}
+                  disabled={disabled}
+                  onChange={async (e) => {
+                    await onPatchAppoLead({ appo_detail_status: e.target.value })
+                  }}
+                  style={{
+                    flex: '1 1 140px',
+                    minWidth: 120,
+                    padding: '6px 10px',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: 6,
+                    fontSize: 13,
+                  }}
+                >
+                  <option value="">選択してください</option>
+                  <option value="調整中">調整中（商談日程調整中）</option>
+                  <option value="採用OK">採用OK（商談着座済み）</option>
+                  <option value="採用NG">採用NG（商談後NG）</option>
+                  <option value="受注">受注（契約済み）</option>
+                </select>
+                <label
+                  className="inline-flex items-center gap-2 shrink-0 cursor-pointer"
+                  style={{ fontSize: 13, color: 'var(--color-gray-900)' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={appoLead.juchu === true}
+                    disabled={disabled}
+                    onChange={async (e) => {
+                      await onPatchAppoLead({ juchu: e.target.checked })
+                    }}
+                    className="rounded border"
+                    style={{ borderColor: 'var(--color-gray-200)' }}
+                  />
+                  受注
+                </label>
+                {appoLead.juchu === true && (
+                  <span
+                    className="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold tabular-nums shrink-0"
+                    style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)' }}
+                  >
+                    ✅受注
+                  </span>
+                )}
+              </div>
             </div>
 
             <div>

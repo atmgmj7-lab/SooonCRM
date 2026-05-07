@@ -10,8 +10,8 @@ const APPO_STATUSES = [
 ]
 const MIKANRYO_STATUSES = ['新規', '未コール', '留守', '見込みA', '見込みB', '見込みC']
 
-function countAppo(leads: { status: string; last_call_result: string | null }[]): number {
-  return leads.filter((l) => APPO_STATUSES.includes(l.status || l.last_call_result || '')).length
+function countAppo(leads: { status: string }[]): number {
+  return leads.filter((l) => APPO_STATUSES.includes(l.status || '')).length
 }
 
 function DeltaBadge({ delta }: { delta: number | null }) {
@@ -44,13 +44,13 @@ export default async function DashboardPage() {
   const [thisMonthRes, lastMonthRes, callsRes, mikanryoRes] = await Promise.all([
     supabase
       .from('leads')
-      .select('id, status, last_call_result, deal_amount')
+      .select('id, status, deal_amount')
       .eq('tenant_id', TENANT_ID)
       .gte('inquiry_at', thisStart)
       .lte('inquiry_at', thisEnd),
     supabase
       .from('leads')
-      .select('id, status, last_call_result, deal_amount')
+      .select('id, status, deal_amount')
       .eq('tenant_id', TENANT_ID)
       .gte('inquiry_at', lastStart)
       .lte('inquiry_at', lastEnd),
@@ -61,7 +61,7 @@ export default async function DashboardPage() {
       .gte('call_date', sevenDaysAgo),
     supabase
       .from('leads')
-      .select('id, status, last_call_result')
+      .select('id, status')
       .eq('tenant_id', TENANT_ID)
       .in('status', MIKANRYO_STATUSES),
   ])
@@ -74,8 +74,8 @@ export default async function DashboardPage() {
   // 今月・先月 集計
   const thisLeads  = thisMonth.length
   const lastLeads  = lastMonth.length
-  const thisAppo   = countAppo(thisMonth as { status: string; last_call_result: string | null }[])
-  const lastAppo   = countAppo(lastMonth as { status: string; last_call_result: string | null }[])
+  const thisAppo   = countAppo(thisMonth as { status: string }[])
+  const lastAppo   = countAppo(lastMonth as { status: string }[])
   const thisAppoRate = thisLeads > 0 ? (thisAppo / thisLeads) * 100 : 0
   const lastAppoRate = lastLeads > 0 ? (lastAppo / lastLeads) * 100 : 0
 
@@ -87,11 +87,11 @@ export default async function DashboardPage() {
   const appo7dRate   = calls7dCount > 0 ? (appo7dCount / calls7dCount) * 100 : 0
 
   // 未完了内訳
-  const mikanryoList = mikanryo as { status: string; last_call_result: string | null }[]
+  const mikanryoList = mikanryo as { status: string }[]
   const mikanryoCount = mikanryoList.length
-  const rusuCount    = mikanryoList.filter((l) => (l.status || l.last_call_result) === '留守').length
-  const mikomiCount  = mikanryoList.filter((l) => ['見込みA','見込みB','見込みC'].includes(l.status || l.last_call_result || '')).length
-  const miCallCount  = mikanryoList.filter((l) => ['未コール','新規'].includes(l.status || l.last_call_result || '')).length
+  const rusuCount    = mikanryoList.filter((l) => l.status === '留守').length
+  const mikomiCount  = mikanryoList.filter((l) => ['見込みA','見込みB','見込みC'].includes(l.status || '')).length
+  const miCallCount  = mikanryoList.filter((l) => ['未コール','新規'].includes(l.status || '')).length
 
   const cardStyle: React.CSSProperties = {
     background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10,

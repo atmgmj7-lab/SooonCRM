@@ -160,7 +160,6 @@ async function handleLegacyLeadWebhook(
     inquiry_at:       (record.inquiry_at as string) ?? null,
     list_created_at:  (record.list_created_at as string) ?? null,
     status:           (record.status as string) ?? '新規',
-    last_call_result: (record.last_call_result as string) ?? null,
     deal_amount:      (record.deal_amount as number) ?? null,
     initial_fee:      (record.initial_fee as number) ?? null,
     monthly_fee:      (record.monthly_fee as number) ?? null,

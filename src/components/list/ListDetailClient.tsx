@@ -30,7 +30,6 @@ type Lead = {
   ad_name: string | null
   status: string | null
   newcomer_flag: string | null
-  last_call_result: string | null
   order_closed: boolean | null
   jitsuyo_ok: boolean | null
   total_revenue: number | null
@@ -39,6 +38,7 @@ type Lead = {
   appo_date?: string | null
   appo_time?: string | null
   appo_detail?: string | null
+  juchu?: boolean | null
   source_data?: Record<string, unknown> | null
 }
 
@@ -208,7 +208,7 @@ export function ListDetailClient({
   }, [primaryLead])
 
   const patchPrimaryLeadAppo = useCallback(
-    async (patch: Record<string, string>) => {
+    async (patch: Record<string, string | boolean>) => {
       if (!primaryLead) return
       setSyncStatus('saving')
       setSyncError(null)
@@ -223,7 +223,18 @@ export function ListDetailClient({
           throw new Error(body.error ?? `status ${res.status}`)
         }
         setLeadsLocal((prev) =>
-          prev.map((l) => (l.id === primaryLead.id ? { ...l, ...patch } : l)),
+          prev.map((l) => {
+            if (l.id !== primaryLead.id) return l
+            const next = { ...l, ...patch }
+            if (
+              'appo_detail_status' in patch &&
+              typeof (patch as { appo_detail_status?: string }).appo_detail_status === 'string'
+            ) {
+              const d = (patch as { appo_detail_status: string }).appo_detail_status
+              next.juchu = d === '受注'
+            }
+            return next
+          }),
         )
         setSyncStatus('done')
         setTimeout(() => setSyncStatus('idle'), 3000)
@@ -247,7 +258,7 @@ export function ListDetailClient({
   const statusLead = primaryLead
     ? {
         id: primaryLead.id,
-        status: primaryLead.status ?? primaryLead.last_call_result ?? '新規',
+        status: primaryLead.status ?? '新規',
       }
     : null
 
@@ -346,7 +357,7 @@ export function ListDetailClient({
                 if (!primaryLead) return
                 setLeadsLocal((prev) =>
                   prev.map((l) =>
-                    l.id === primaryLead.id ? { ...l, status: s, last_call_result: s } : l,
+                    l.id === primaryLead.id ? { ...l, status: s } : l,
                   ),
                 )
               }}
@@ -354,16 +365,11 @@ export function ListDetailClient({
                 if (!primaryLead) return
                 setLeadsLocal((prev) =>
                   prev.map((l) =>
-                    l.id === primaryLead.id ? { ...l, appo_detail_status: detail } : l,
+                    l.id === primaryLead.id
+                      ? { ...l, appo_detail_status: detail, juchu: detail === '受注' }
+                      : l,
                   ),
                 )
-                setRecord((prev) => ({
-                  ...prev,
-                  chosei: detail === '調整中',
-                  saiyo_ok: detail === '採用OK',
-                  saiyo_ng: detail === '採用NG',
-                  juchu: detail === '受注',
-                }))
               }}
             />
           </div>
@@ -404,17 +410,10 @@ export function ListDetailClient({
                   if (tid) {
                     setLeadsLocal((prev) =>
                       prev.map((l) =>
-                        l.id === tid ? { ...l, appo_detail_status: detail } : l,
+                        l.id === tid ? { ...l, appo_detail_status: detail, juchu: detail === '受注' } : l,
                       ),
                     )
                   }
-                  setRecord((prev) => ({
-                    ...prev,
-                    chosei: detail === '調整中',
-                    saiyo_ok: detail === '採用OK',
-                    saiyo_ng: detail === '採用NG',
-                    juchu: detail === '受注',
-                  }))
                 }}
               />
             </div>

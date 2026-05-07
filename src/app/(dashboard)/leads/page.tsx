@@ -16,8 +16,8 @@ type Lead = {
   prefecture: string | null
   phone_number: string | null
   status: string | null
-  last_call_result: string | null
   appo_detail_status: string | null
+  juchu?: boolean | null
 }
 
 type TabKey = 'all' | 'new' | 'done'
@@ -42,7 +42,7 @@ const COL_WIDTHS = {
   phone_number:       120,
   elapsed:             72,
   status:             120,
-  appo_detail:        200,
+  appo_detail:        240,
 } as const
 
 const TOTAL_WIDTH = Object.values(COL_WIDTHS).reduce((a, b) => a + b, 0)
@@ -112,6 +112,7 @@ export default function LeadsPage() {
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<TabKey>('all')
   const [appoDetailFilledTotal, setAppoDetailFilledTotal] = useState<number | null>(null)
+  const [juchuSavingId, setJuchuSavingId] = useState<string | null>(null)
 
   const buildUrl = useCallback((qStr: string, tabKey: TabKey, p: number) => {
     const params = new URLSearchParams({ page: String(p), tab: tabKey })
@@ -150,6 +151,25 @@ export default function LeadsPage() {
     setLeads((prev) => [...prev, ...(json.leads ?? [])])
     setHasMore(json.hasMore ?? false)
     setPage(next)
+  }
+
+  async function patchLeadJuchu(leadId: string, next: boolean) {
+    setJuchuSavingId(leadId)
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ juchu: next }),
+      })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        alert(body.error ?? `更新失敗 (${res.status})`)
+        return
+      }
+      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, juchu: next } : l)))
+    } finally {
+      setJuchuSavingId(null)
+    }
   }
 
   const w = COL_WIDTHS
@@ -288,17 +308,17 @@ export default function LeadsPage() {
                 <td className="px-1 py-1 align-middle" style={{ width: w.status, minWidth: w.status, maxWidth: w.status }}>
                   <StatusSelect
                     leadId={lead.id}
-                    value={lead.status ?? lead.last_call_result ?? '新規'}
+                    value={lead.status ?? '新規'}
                     size="sm"
                     onUpdate={(s) => {
                       setLeads((prev) =>
-                        prev.map((l) => (l.id === lead.id ? { ...l, status: s, last_call_result: s } : l)),
+                        prev.map((l) => (l.id === lead.id ? { ...l, status: s } : l)),
                       )
                     }}
                   />
                 </td>
                 <td
-                  className="px-3 py-1.5 align-middle border-l-2 whitespace-nowrap"
+                  className="px-3 py-1.5 align-middle border-l-2"
                   style={{
                     width: w.appo_detail,
                     minWidth: w.appo_detail,
@@ -306,18 +326,46 @@ export default function LeadsPage() {
                     borderColor: 'var(--color-gray-200)',
                   }}
                 >
-                  {(lead.status ?? lead.last_call_result) === 'アポOK' ? (
-                    <AppoStatusSelect
-                      leadId={lead.id}
-                      currentStatus={lead.status ?? lead.last_call_result}
-                      currentDetail={lead.appo_detail_status}
-                      size="sm"
-                      onUpdate={(detail) => {
-                        setLeads((prev) =>
-                          prev.map((l) => (l.id === lead.id ? { ...l, appo_detail_status: detail } : l)),
-                        )
-                      }}
-                    />
+                  {lead.status === 'アポOK' ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <AppoStatusSelect
+                        leadId={lead.id}
+                        currentStatus={lead.status}
+                        currentDetail={lead.appo_detail_status}
+                        size="sm"
+                onUpdate={(detail) => {
+                  setLeads((prev) =>
+                    prev.map((l) =>
+                      l.id === lead.id
+                        ? { ...l, appo_detail_status: detail, juchu: detail === '受注' }
+                        : l,
+                    ),
+                  )
+                }}
+                      />
+                      <label className="inline-flex items-center gap-1.5 shrink-0 cursor-pointer text-[11px]" style={{ color: 'var(--color-gray-900)' }}>
+                        <input
+                          type="checkbox"
+                          checked={lead.juchu === true}
+                          disabled={juchuSavingId === lead.id}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            void patchLeadJuchu(lead.id, e.target.checked)
+                          }}
+                          className="rounded border align-middle"
+                          style={{ borderColor: 'var(--color-gray-200)' }}
+                        />
+                        受注
+                      </label>
+                      {lead.juchu === true && (
+                        <span
+                          className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums shrink-0"
+                          style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)' }}
+                        >
+                          ✅受注
+                        </span>
+                      )}
+                    </div>
                   ) : (
                     <span className="text-[11px]" style={{ color: 'var(--color-gray-300)' }}>
                       —

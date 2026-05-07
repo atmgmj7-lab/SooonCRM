@@ -23,10 +23,6 @@ type ListRecord = {
   inquiry_count: number | null
   last_inquiry_at: string | null
   last_inquiry_ad_name: string | null
-  chosei?: boolean | null
-  saiyo_ok?: boolean | null
-  saiyo_ng?: boolean | null
-  juchu?: boolean | null
 }
 
 const LAST_CALL_RESULT_OPTIONS = ['アポOK', 'NG', '留守', '対象外', '再コール', '思案中', 'ポータルサイト']
@@ -464,23 +460,19 @@ export default function ListPage() {
               <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 120 }} onClick={thClick('status')}>
                 ステータス<SortIcon field="status" sorts={sorts} />
               </th>
-              <th style={{ padding: '8px 12px', fontSize: 11, color: '#6B7280', whiteSpace: 'nowrap' }}>調整中</th>
-              <th style={{ padding: '8px 12px', fontSize: 11, color: '#6B7280', whiteSpace: 'nowrap' }}>採用OK</th>
-              <th style={{ padding: '8px 12px', fontSize: 11, color: '#6B7280', whiteSpace: 'nowrap' }}>採用NG</th>
-              <th style={{ padding: '8px 12px', fontSize: 11, color: '#6B7280', whiteSpace: 'nowrap' }}>受注</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={16} className="py-12 text-center text-[13px] animate-pulse" style={{ color: 'var(--color-gray-400)' }}>
+                <td colSpan={12} className="py-12 text-center text-[13px] animate-pulse" style={{ color: 'var(--color-gray-400)' }}>
                   読み込み中…
                 </td>
               </tr>
             )}
             {!loading && records.length === 0 && (
               <tr>
-                <td colSpan={16} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
+                <td colSpan={12} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
                   データがありません
                 </td>
               </tr>
@@ -539,18 +531,6 @@ export default function ListPage() {
                       {rec.status}
                     </span>
                   ) : '—'}
-                </td>
-                <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                  {rec.chosei ? <span style={{ color: '#0D9488', fontWeight: 700 }}>✓</span> : <span style={{ color: '#E5E7EB' }}>—</span>}
-                </td>
-                <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                  {rec.saiyo_ok ? <span style={{ color: '#1D4ED8', fontWeight: 700 }}>✓</span> : <span style={{ color: '#E5E7EB' }}>—</span>}
-                </td>
-                <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                  {rec.saiyo_ng ? <span style={{ color: '#DC2626', fontWeight: 700 }}>✓</span> : <span style={{ color: '#E5E7EB' }}>—</span>}
-                </td>
-                <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                  {rec.juchu ? <span style={{ color: '#15803D', fontWeight: 700 }}>✓</span> : <span style={{ color: '#E5E7EB' }}>—</span>}
                 </td>
               </tr>
             ))}
