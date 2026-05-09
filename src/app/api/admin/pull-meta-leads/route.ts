@@ -156,13 +156,27 @@ export async function POST(request: Request) {
         const phone = normalizePhoneNumber(extracted.phone)
         if (!phone) { totalSkipped++; continue }
 
-        // 重複チェック: 同じ電話番号が既に list_records にあるか
-        const { data: existing } = await supabase
+        // 重複チェック①: list_records.phone_numbers（webhook/FM同期で入ったデータ）
+        const { data: existingLR } = await supabase
           .from('list_records')
           .select('id, customer_id')
           .contains('phone_numbers', JSON.stringify([phone]))
           .eq('tenant_id', TENANT_ID)
           .maybeSingle()
+
+        // 重複チェック②: leads.phone_number（スプレッドシートCSV等で直接入れたデータ）
+        const { data: existingLeadByPhone } = !existingLR ? await supabase
+          .from('leads')
+          .select('id, list_record_id, customer_id')
+          .eq('phone_number', phone)
+          .eq('tenant_id', TENANT_ID)
+          .not('list_record_id', 'is', null)
+          .maybeSingle() : { data: null }
+
+        const existing = existingLR ?? (existingLeadByPhone?.list_record_id ? {
+          id: existingLeadByPhone.list_record_id,
+          customer_id: existingLeadByPhone.customer_id,
+        } : null)
 
         let listRecordId: string
         let customerId: string
