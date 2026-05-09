@@ -201,6 +201,15 @@ font-family: 'Hiragino Sans', 'ヒラギノ角ゴシック', 'Hiragino Kaku Goth
 
 ---
 
+## プロジェクト管理（PM）ファイル
+
+> セッション開始時・進捗確認・要件確認・プラン確認はすべて `pm/` フォルダを参照すること。
+
+- **pm/PROGRESS.md** — 今どのタスクが完了していて、次に何をすべきかのタスクリスト
+- **pm/BLOCKER.md** — AIが立ち止まっている問題・人手が必要な作業の一覧
+- **pm/ARCHITECTURE.md** — フォルダ構成・データフロー・DB設計などのシステム全体像
+- **pm/RUNBOOK.md** — アプリ起動・CSVインポート・Webhook設定・デプロイの具体的手順書
+
 ## 詳細仕様
 
 - **REQUIREMENTS.md** — 要件定義書（全体像）
@@ -212,4 +221,4 @@ font-family: 'Hiragino Sans', 'ヒラギノ角ゴシック', 'Hiragino Kaku Goth
 - **EXECUTION_PLAN.md** — Claude Code 実行手順
 
 ## 共通ルール参照
-> `@../CLAUDE.md` 参照。セッション開始時は `@docs/tasks.md` を確認すること。
+> `@../CLAUDE.md` 参照。セッション開始時は `@pm/PROGRESS.md` を確認すること。
