@@ -157,6 +157,22 @@ export async function fmUpdateRecord(
   }
 }
 
+/** FM上で電話番号が一致するリストレコードを検索する（重複チェック用） */
+export async function fmFindByPhone(
+  phone: string
+): Promise<{ recordId: string } | null> {
+  const layout = process.env.FM_LAYOUT_LIST
+  if (!layout || !phone) return null
+  try {
+    const result = await fmFindRecords(layout, [{ '電話番号': phone }], { _limit: 1 })
+    const first = result.response?.data?.[0]
+    if (first) return { recordId: String(first.recordId) }
+    return null
+  } catch {
+    return null
+  }
+}
+
 export async function fmCreateRecord(
   fieldData: Record<string, unknown>
 ): Promise<{ recordId: string } | null> {

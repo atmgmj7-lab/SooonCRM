@@ -85,23 +85,37 @@ function extractLeadData(body: Record<string, unknown>) {
 }
 
 async function notifyFileMaker(record: Record<string, unknown>) {
-  const { fmCreateRecord } = await import('@/lib/filemaker/client')
+  const { fmCreateRecord, fmFindByPhone } = await import('@/lib/filemaker/client')
   const phones = record.phone_numbers as string[] | string | null
   const phone  = Array.isArray(phones) ? (phones[0] ?? '') : (phones ?? '')
-  const result = await fmCreateRecord({
-    '顧客ID':       record.customer_id  ?? '',
-    'ADNAME':      record.ad_name       ?? '',
-    '会社名':      record.company_name  ?? '',
-    '代表名':      record.representative_name ?? '',
-    '都道府県':    record.prefecture    ?? '',
-    '電話番号':    phone,
-    'インバウンド': '1',
-  })
-  if (result?.recordId) {
+
+  // FM重複チェック: 同じ電話番号が既にFMに存在する場合は新規作成しない
+  const existing = phone ? await fmFindByPhone(phone) : null
+
+  let fmRecordId: string | null = null
+  if (existing) {
+    // 既存FMレコードにリンク（重複登録しない）
+    fmRecordId = existing.recordId
+    console.log('[meta-webhook] FM duplicate found, linking recordId:', fmRecordId)
+  } else {
+    // FM未登録 → 新規作成
+    const result = await fmCreateRecord({
+      '顧客ID':       record.customer_id  ?? '',
+      'ADNAME':      record.ad_name       ?? '',
+      '会社名':      record.company_name  ?? '',
+      '代表名':      record.representative_name ?? '',
+      '都道府県':    record.prefecture    ?? '',
+      '電話番号':    phone,
+      'インバウンド': '1',
+    })
+    fmRecordId = result?.recordId ?? null
+  }
+
+  if (fmRecordId) {
     const supabase = createAdminClient()
     await supabase
       .from('list_records')
-      .update({ fm_record_id: result.recordId })
+      .update({ fm_record_id: fmRecordId })
       .eq('id', record.id as string)
   }
 }
