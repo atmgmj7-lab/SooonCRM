@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Bell, SortAsc, SortDesc, X, Save, ChevronDown } from 'lucide-react'
+import { Search, SortAsc, SortDesc, X, Save } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import NewLeadsTab from './NewLeadsTab'
 
 type ListRecord = {
   id: string
@@ -92,6 +93,7 @@ function SortIcon({ field, sorts }: { field: string; sorts: SortKey[] }) {
 
 export default function ListPage() {
   const router = useRouter()
+  const [activeTab, setActiveTab] = useState<'list' | 'new-leads'>('list')
   const [records, setRecords] = useState<ListRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -246,21 +248,10 @@ export default function ListPage() {
             リスト一覧
           </h1>
           <p className="text-[12px] mt-0.5 tabular-nums" style={{ color: 'var(--color-gray-400)' }}>
-            {total.toLocaleString()} 件
+            {activeTab === 'list' ? `${total.toLocaleString()} 件` : '新規リード（webhook受信）'}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {pendingCount > 0 && (
-            <button
-              type="button"
-              onClick={() => router.push('/leads')}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium"
-              style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning)' }}
-            >
-              <Bell size={13} />
-              新規リード受信 {pendingCount} 件
-            </button>
-          )}
           <button
             type="button"
             onClick={() => setSearchMode((p) => !p)}
@@ -275,6 +266,32 @@ export default function ListPage() {
           </button>
         </div>
       </div>
+
+      {/* タブ切り替え */}
+      <div className="flex gap-1 mb-4 border-b" style={{ borderColor: 'var(--color-gray-200)' }}>
+        {([
+          { key: 'list',      label: 'リスト一覧' },
+          { key: 'new-leads', label: `新規リード${pendingCount > 0 ? ` (${pendingCount})` : ''}` },
+        ] as const).map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className="px-4 py-2 text-[13px] font-medium border-b-2 transition-colors"
+            style={{
+              borderColor: activeTab === tab.key ? 'var(--color-blue)' : 'transparent',
+              color: activeTab === tab.key ? 'var(--color-blue)' : 'var(--color-gray-600)',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* 新規リードタブ */}
+      {activeTab === 'new-leads' && <NewLeadsTab />}
+
+      {/* 以下はリスト一覧タブのみ表示 */}
+      {activeTab !== 'list' ? null : <>
 
       {/* Search mode panel */}
       {searchMode && (
@@ -559,6 +576,7 @@ export default function ListPage() {
           </button>
         </div>
       )}
+      </> /* end list tab */}
     </div>
   )
 }
