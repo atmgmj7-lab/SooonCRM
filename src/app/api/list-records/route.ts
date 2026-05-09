@@ -14,7 +14,7 @@ const ALLOWED_FIELDS = new Set([
 
 const ALLOWED_SORT_FIELDS = new Set([
   'created_at', 'ad_name', 'company_name', 'representative_name',
-  'prefecture', 'last_call_result', 'last_call_count', 'inquiry_count',
+  'prefecture', 'last_call_result', 'last_call_at', 'last_call_count', 'inquiry_count',
   'last_inquiry_at', 'status',
 ])
 
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
     // 全列取得（アポ内訳フラグは廃止。紐づく leads で管理）
     .select('*', { count: 'exact' })
     .eq('tenant_id', tenantId)
-    .not('company_name', 'is', null)
+    .or('company_name.not.is.null,source.eq.meta_ads,source.eq.google_ads')
 
   // Sort
   for (const s of sorts) {

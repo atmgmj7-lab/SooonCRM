@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { pushNewLeadToFM } from '@/lib/filemaker/pushToFM'
 import { normalizePhoneNumber } from '@/lib/utils/phone'
 
 const TENANT_ID = process.env.DEFAULT_TENANT_ID!
@@ -87,11 +86,16 @@ function extractLeadData(body: Record<string, unknown>) {
 
 async function notifyFileMaker(record: Record<string, unknown>) {
   const { fmCreateRecord } = await import('@/lib/filemaker/client')
+  const phones = record.phone_numbers as string[] | string | null
+  const phone  = Array.isArray(phones) ? (phones[0] ?? '') : (phones ?? '')
   const result = await fmCreateRecord({
-    customer_id:   record.customer_id as string,
-    company_name:  record.company_name as string,
-    phone_numbers: record.phone_numbers as string,
-    ad_name:       record.ad_name as string,
+    '顧客ID':       record.customer_id  ?? '',
+    'ADNAME':      record.ad_name       ?? '',
+    '会社名':      record.company_name  ?? '',
+    '代表名':      record.representative_name ?? '',
+    '都道府県':    record.prefecture    ?? '',
+    '電話番号':    phone,
+    'インバウンド': '1',
   })
   if (result?.recordId) {
     const supabase = createAdminClient()
@@ -187,7 +191,7 @@ export async function POST(request: Request) {
         customer_id:         customerId,
         phone_numbers:       [phone],
         ad_name:             leadData.ad_name || null,
-        company_name:        leadData.company_name || null,
+        company_name:        leadData.company_name || `【${leadData.ad_name || '広告'}からの問い合わせ】`,
         representative_name: leadData.representative_name || null,
         prefecture:          leadData.prefecture || null,
         source:              'meta_ads',
@@ -216,7 +220,7 @@ export async function POST(request: Request) {
 
   // STEP4: leads に INSERT（list_record_id と customer_id を必ずセット）
   const now = new Date().toISOString()
-  const { data: insertedLead, error: leadError } = await supabase
+  const { error: leadError } = await supabase
     .from('leads')
     .insert({
       tenant_id:           TENANT_ID,
@@ -233,43 +237,10 @@ export async function POST(request: Request) {
       phone_number:        phone,
       prefecture:          leadData.prefecture || null,
     })
-    .select('id')
-    .single()
-
   if (leadError) {
     console.error('[meta-webhook] leads error:', JSON.stringify(leadError))
     return NextResponse.json({ error: leadError.message }, { status: 500 })
   }
-
-  // STEP4b: FM へ新規リード送信（非同期。失敗しても Webhook は成功扱い）
-  void (async () => {
-    try {
-      const result = await pushNewLeadToFM({
-        ad_name:             leadData.ad_name || null,
-        inquiry_at:          now,
-        company_name:        leadData.company_name || null,
-        representative_name: leadData.representative_name || null,
-        prefecture:          leadData.prefecture || null,
-        phone_numbers:       [phone],
-        title:               null,
-        newcomer_flag:       null,
-      })
-      if (result.ok && result.fm_record_id && insertedLead?.id) {
-        const { error: fmUpdErr } = await supabase
-          .from('leads')
-          .update({ fm_record_id: result.fm_record_id })
-          .eq('id', insertedLead.id)
-          .eq('tenant_id', TENANT_ID)
-        if (fmUpdErr) {
-          console.error('[meta-webhook] leads.fm_record_id update failed:', JSON.stringify(fmUpdErr))
-        }
-      } else if (!result.ok) {
-        console.error('[meta-webhook] pushNewLeadToFM failed:', result.error ?? 'unknown')
-      }
-    } catch (err) {
-      console.error('[meta-webhook] pushNewLeadToFM exception:', err)
-    }
-  })()
 
   // 5. webhook_leads を added に更新
   await supabase

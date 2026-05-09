@@ -17,6 +17,7 @@ type ListRecord = {
   phone_numbers: string[] | null
   last_call_result: string | null
   last_call_count: number | null
+  last_call_at: string | null
   status: string | null
   custom_data: Record<string, unknown> | null
   created_at: string
@@ -448,6 +449,9 @@ export default function ListPage() {
               <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 100 }} onClick={thClick('last_call_result')}>
                 最終架電結果<SortIcon field="last_call_result" sorts={sorts} />
               </th>
+              <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 80 }} onClick={thClick('last_call_at')}>
+                最終架電日<SortIcon field="last_call_at" sorts={sorts} />
+              </th>
               <th className={thBase} style={{ color: 'var(--color-gray-600)', minWidth: 60, textAlign: 'right' }} onClick={thClick('last_call_count')}>
                 コール<SortIcon field="last_call_count" sorts={sorts} />
               </th>
@@ -465,14 +469,14 @@ export default function ListPage() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={12} className="py-12 text-center text-[13px] animate-pulse" style={{ color: 'var(--color-gray-400)' }}>
+                <td colSpan={13} className="py-12 text-center text-[13px] animate-pulse" style={{ color: 'var(--color-gray-400)' }}>
                   読み込み中…
                 </td>
               </tr>
             )}
             {!loading && records.length === 0 && (
               <tr>
-                <td colSpan={12} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
+                <td colSpan={13} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
                   データがありません
                 </td>
               </tr>
@@ -512,6 +516,11 @@ export default function ListPage() {
                 </td>
                 <td className={tdBase}>
                   <ResultBadge result={rec.last_call_result} />
+                </td>
+                <td className={`${tdBase} tabular-nums`} style={{ color: 'var(--color-gray-600)' }}>
+                  {rec.last_call_at
+                    ? new Date(rec.last_call_at).toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' })
+                    : '—'}
                 </td>
                 <td className={`${tdBase} tabular-nums text-right`} style={{ color: 'var(--color-gray-600)' }}>
                   {rec.last_call_count ?? '—'}
