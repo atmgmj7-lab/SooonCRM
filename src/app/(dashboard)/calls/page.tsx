@@ -15,10 +15,16 @@ type Call = {
   call_date: string | null
   call_start_time: string | null
   call_duration_minutes: number | null
+  call_duration_seconds: number | null
   call_result: string | null
   agent_name: string | null
   call_category: string | null
-  rep_level: string | null
+  daihyo_level: string | null
+  rep_hit: string | null
+  ci: string | null
+  rep_level2: string | null
+  list_name: string | null
+  call_history_id: string | null
   appo_detail: string | null
   list_record_id: string | null
   list_records: ListRecord | null
@@ -27,18 +33,23 @@ type Call = {
 const RESULT_OPTIONS = ['アポOK', 'NG', '留守', '対象外', '再コール', '思案中', '現アナ', '重複']
 
 const COL_WIDTHS = {
-  list_link:     60,
-  call_date:     88,
-  call_time:     72,
-  company_name: 140,
-  rep_name:      96,
-  phone:        112,
-  call_result:   80,
-  duration:      68,
-  agent_name:    96,
-  rep_level:     60,
-  category:      80,
-  appo_detail:  200,
+  list_link:         60,
+  call_date:         88,
+  call_time:         72,
+  company_name:     140,
+  rep_name:          96,
+  phone:            112,
+  call_result:       80,
+  duration:          68,
+  agent_name:        96,
+  daihyo_level:      60,
+  rep_hit:           60,
+  ci:                48,
+  rep_level2:        60,
+  list_name:        100,
+  call_history_id:   80,
+  category:          80,
+  appo_detail:      200,
 }
 
 const TOTAL_WIDTH = Object.values(COL_WIDTHS).reduce((a, b) => a + b, 0)
@@ -54,11 +65,11 @@ function Th({ label, w, center }: { label: string; w: number; center?: boolean }
   )
 }
 
-function Td({ value, w, center }: { value: React.ReactNode; w: number; center?: boolean }) {
+function Td({ value, w, center, title }: { value: React.ReactNode; w: number; center?: boolean; title?: string }) {
   const text = typeof value === 'string' ? value : undefined
   return (
     <td
-      title={text}
+      title={title ?? text}
       className={`px-2 py-1.5 text-[11px] overflow-hidden whitespace-nowrap text-ellipsis align-middle${center ? ' text-center' : ''}`}
       style={{ width: w, minWidth: w, maxWidth: w, color: 'var(--color-gray-700)' }}
     >
@@ -103,6 +114,11 @@ function formatDuration(min: number | null): string {
   const m = Math.floor(min)
   const s = Math.round((min - m) * 60)
   return s > 0 ? `${m}分${s}秒` : `${m}分`
+}
+
+function shortenCallHistoryId(id: string | null): string | null {
+  if (id == null || id === '') return null
+  return id.length <= 8 ? id : id.slice(0, 8)
 }
 
 export default function CallsPage() {
@@ -206,7 +222,12 @@ export default function CallsPage() {
               <Th label="架電結果" w={w.call_result} />
               <Th label="通話時間" w={w.duration}    center />
               <Th label="担当者"   w={w.agent_name} />
-              <Th label="Lvl"      w={w.rep_level}   center />
+              <Th label="代表Lv"   w={w.daihyo_level} center />
+              <Th label="代表hit"  w={w.rep_hit}     center />
+              <Th label="CL"       w={w.ci}          center />
+              <Th label="担担Lv"   w={w.rep_level2}  center />
+              <Th label="リスト"   w={w.list_name} />
+              <Th label="履歴ID"   w={w.call_history_id} center />
               <Th label="カテゴリ" w={w.category} />
               <Th label="アポ情報" w={w.appo_detail} />
             </tr>
@@ -214,14 +235,14 @@ export default function CallsPage() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={12} className="py-12 text-center text-[13px] animate-pulse" style={{ color: 'var(--color-gray-400)' }}>
+                <td colSpan={17} className="py-12 text-center text-[13px] animate-pulse" style={{ color: 'var(--color-gray-400)' }}>
                   読み込み中…
                 </td>
               </tr>
             )}
             {!loading && calls.length === 0 && (
               <tr>
-                <td colSpan={12} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
+                <td colSpan={17} className="py-12 text-center text-[13px]" style={{ color: 'var(--color-gray-400)' }}>
                   データがありません（FMから同期中の場合はしばらくお待ちください）
                 </td>
               </tr>
@@ -256,10 +277,24 @@ export default function CallsPage() {
                   >
                     <ResultBadge result={call.call_result} />
                   </td>
-                  <Td value={formatDuration(call.call_duration_minutes)} w={w.duration} center />
-                  <Td value={call.agent_name}                w={w.agent_name} />
-                  <Td value={call.rep_level}                 w={w.rep_level}  center />
-                  <Td value={call.call_category}             w={w.category} />
+                  <Td
+                    value={<span className="tabular-nums">{formatDuration(call.call_duration_minutes)}</span>}
+                    w={w.duration}
+                    center
+                  />
+                  <Td value={call.agent_name} w={w.agent_name} />
+                  <Td value={call.daihyo_level} w={w.daihyo_level} center />
+                  <Td value={call.rep_hit} w={w.rep_hit} center />
+                  <Td value={call.ci} w={w.ci} center />
+                  <Td value={call.rep_level2} w={w.rep_level2} center />
+                  <Td value={call.list_name} w={w.list_name} />
+                  <Td
+                    value={<span className="tabular-nums">{shortenCallHistoryId(call.call_history_id) ?? '—'}</span>}
+                    w={w.call_history_id}
+                    center
+                    title={call.call_history_id ?? undefined}
+                  />
+                  <Td value={call.call_category} w={w.category} />
                   <Td value={call.appo_detail}               w={w.appo_detail} />
                 </tr>
               )

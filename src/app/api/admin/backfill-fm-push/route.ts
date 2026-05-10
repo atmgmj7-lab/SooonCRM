@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { fmCreateRecord, fmFindByPhone } from '@/lib/filemaker/client'
+import { upsertListRecordToFM } from '@/lib/filemaker/pushToFM'
 
 const TENANT_ID = process.env.DEFAULT_TENANT_ID!
 
@@ -51,42 +51,27 @@ export async function POST() {
   for (const rec of records) {
     try {
       const phones = rec.phone_numbers as string[] | null
-      const phone  = phones?.[0] ?? ''
 
-      // FM重複チェック
-      const existing = phone ? await fmFindByPhone(phone) : null
+      const fmRes = await upsertListRecordToFM({
+        company_name:        rec.company_name,
+        representative_name: rec.representative_name,
+        prefecture:          rec.prefecture,
+        phone_numbers:       phones ?? [],
+        ad_name:             rec.ad_name,
+        inquiry_at:          null,
+        title:               null,
+        newcomer_flag:       null,
+        list_record_id:      rec.id,
+      })
 
-      let fmRecordId: string | null = null
-
-      if (existing) {
-        // 既存FMレコードにリンク（重複登録しない）
-        fmRecordId = existing.recordId
-        linked++
-      } else {
-        // FM未登録 → 新規作成
-        const result = await fmCreateRecord({
-          '顧客ID':       rec.customer_id  ?? '',
-          'ADNAME':      rec.ad_name       ?? '',
-          '会社名':      rec.company_name  ?? '',
-          '代表名':      rec.representative_name ?? '',
-          '都道府県':    rec.prefecture    ?? '',
-          '電話番号':    phone,
-          'インバウンド': '1',
-        })
-        fmRecordId = result?.recordId ?? null
-        if (fmRecordId) {
-          created++
-        } else {
-          failed++
-          errors.push(`${rec.id}: FM create returned no recordId`)
-          continue
-        }
+      if (!fmRes.ok || !fmRes.fm_record_id) {
+        failed++
+        errors.push(`${rec.id}: ${fmRes.error ?? 'FM upsert failed'}`)
+        continue
       }
 
-      await supabase
-        .from('list_records')
-        .update({ fm_record_id: fmRecordId })
-        .eq('id', rec.id)
+      if (fmRes.action === 'created') created++
+      else if (fmRes.action === 'linked') linked++
 
     } catch (e) {
       failed++

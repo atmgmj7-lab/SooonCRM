@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizePhoneNumber } from '@/lib/utils/phone'
+import { upsertListRecordToFM } from '@/lib/filemaker/pushToFM'
 
 const TENANT_ID = process.env.DEFAULT_TENANT_ID!
 
@@ -85,38 +86,31 @@ function extractLeadData(body: Record<string, unknown>) {
 }
 
 async function notifyFileMaker(record: Record<string, unknown>) {
-  const { fmCreateRecord, fmFindByPhone } = await import('@/lib/filemaker/client')
   const phones = record.phone_numbers as string[] | string | null
-  const phone  = Array.isArray(phones) ? (phones[0] ?? '') : (phones ?? '')
+  const phoneList = Array.isArray(phones) ? phones : phones ? [phones] : []
 
-  // FM重複チェック: 同じ電話番号が既にFMに存在する場合は新規作成しない
-  const existing = phone ? await fmFindByPhone(phone) : null
+  const result = await upsertListRecordToFM({
+    company_name:        (record.company_name as string | null) ?? null,
+    representative_name: (record.representative_name as string | null) ?? null,
+    prefecture:          (record.prefecture as string | null) ?? null,
+    phone_numbers:       phoneList,
+    ad_name:             (record.ad_name as string | null) ?? null,
+    inquiry_at:
+      (record.created_at as string | null) ??
+      (record.inquiry_at as string | null) ??
+      null,
+    title:               (record.title as string | null) ?? null,
+    newcomer_flag:       (record.newcomer_flag as string | null) ?? null,
+    list_record_id:      record.id as string,
+  })
 
-  let fmRecordId: string | null = null
-  if (existing) {
-    // 既存FMレコードにリンク（重複登録しない）
-    fmRecordId = existing.recordId
-    console.log('[meta-webhook] FM duplicate found, linking recordId:', fmRecordId)
-  } else {
-    // FM未登録 → 新規作成
-    const result = await fmCreateRecord({
-      '顧客ID':       record.customer_id  ?? '',
-      'ADNAME':      record.ad_name       ?? '',
-      '会社名':      record.company_name  ?? '',
-      '代表名':      record.representative_name ?? '',
-      '都道府県':    record.prefecture    ?? '',
-      '電話番号':    phone,
-      'インバウンド': '1',
-    })
-    fmRecordId = result?.recordId ?? null
+  if (!result.ok || !result.fm_record_id) {
+    console.error('[meta-webhook] FM upsert failed:', result.error)
+    return
   }
 
-  if (fmRecordId) {
-    const supabase = createAdminClient()
-    await supabase
-      .from('list_records')
-      .update({ fm_record_id: fmRecordId })
-      .eq('id', record.id as string)
+  if (result.action === 'linked') {
+    console.log('[meta-webhook] FM duplicate found, linking recordId:', result.fm_record_id)
   }
 }
 

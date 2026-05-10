@@ -5,6 +5,7 @@ import { parseAndNormalizePhones } from '@/lib/utils/phone'
 // ---- リスト情報 → list_records ----
 export function mapFMListToSupabase(fmFields: Record<string, unknown>) {
   return {
+    // ── 基本情報 ─────────────────────────────────────────────
     customer_id:           fmFields['顧客ID']          ?? null,
     ad_name:               fmFields['ADNAME']           ?? null,
     list_handover_date:    parseDateJP(fmFields['リスト譲渡日'] as string),
@@ -32,6 +33,27 @@ export function mapFMListToSupabase(fmFields: Record<string, unknown>) {
     meeting_date:          parseDateJP(fmFields['商談日'] as string),
     meeting_time:          fmFields['商談時刻']         ?? null,
     zoom_url:              fmFields['担当ZOOM']         ?? null,
+    // ── ZOOM・メール設定用 ────────────────────────────────────
+    zoom_pw:               fmFields['ZOOMPW']           ?? null,
+    zoom_id:               fmFields['ZOOMID']           ?? null,
+    zoom_link:             fmFields['ZOOMリンク']        ?? null,
+    email_subject:         fmFields['件名']             ?? null,
+    email_body:            fmFields['本文']             ?? null,
+    // ── 最終コール情報（FMの「最終*」フィールド）─────────────
+    last_agent_name:       fmFields['最終担当者名']      ?? null,
+    last_rep_level:        fmFields['最終代表レベル']    ?? null,
+    last_rep_level2:       fmFields['最終対応レベル']    ?? null,
+    last_rep_hit:          fmFields['最終代表hit']       ?? null,
+    last_call_category:    fmFields['最終対応カテゴリ']  ?? null,
+    last_list_level:       fmFields['最終リストレベル']  ?? null,
+    last_call_start_time:  fmFields['最終コール開始時刻'] ?? null,
+    last_call_end_time:    fmFields['最終コール終了時刻'] ?? null,
+    last_call_duration_sec: parseFloat(String(fmFields['最終コール時間_秒'] ?? '')) || null,
+    last_call_duration_min: parseFloat(String(fmFields['最終コール時間_分'] ?? '')) || null,
+    last_appo_detail:      fmFields['最終アポ情報詳細']  ?? null,
+    last_cl:               fmFields['最終CL']           ?? null,
+    last_call_result:      fmFields['最終コール結果']    ?? null,
+    last_call_at:          parseDateJP(fmFields['最終コール開始日'] as string),
   }
 }
 
@@ -50,6 +72,7 @@ const FM_CALL_FIELDS_TO_COLUMNS = new Set([
   '代表hit',
   'CL',
   'リストレベル',
+  '代表レベル',
   '対応カテゴリ',
   '担当レベル',
   'アポ情報詳細',
@@ -78,6 +101,7 @@ export function mapFMCallToSupabase(fmFields: Record<string, unknown>) {
     rep_hit:               fmFields['代表hit']          as string | null,
     ci:                    fmFields['CL']               as string | null,
     rep_level:             fmFields['リストレベル']     as string | null,
+    daihyo_level:          fmFields['代表レベル']       as string | null,
     call_category:         fmFields['対応カテゴリ']     as string | null,
     rep_level2:            fmFields['担当レベル']       as string | null,
     appo_detail:           fmFields['アポ情報詳細']     as string | null,

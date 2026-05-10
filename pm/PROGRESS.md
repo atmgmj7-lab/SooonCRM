@@ -15,6 +15,18 @@
 
 ---
 
+## フェーズ4: コール履歴・FM双方向同期（本日実装）
+
+| # | タスク | 状態 | 備考 |
+|---|--------|------|------|
+| V-1 | calls画面に全フィールド追加（Lvl削除） | ✅ | 代表Lv/代表hit/CL/担担Lv/リスト/履歴ID 追加 |
+| V-2 | list_records/callsソフトデリート化 | ✅ | deleted_at カラム追加、sync・webhook・クエリ全対応 |
+| V-3 | 新規リード→FM Push（重複チェック＋顧客ID fetch-back）| ✅ | upsertListRecordToFM()、fmGetRecordById()実装 |
+| V-4 | supabase.ts 型定義（deleted_at）手動追加 | ✅ | webhook対応時にCursor Agentが追加済み |
+| V-5 | Migration適用 | ⬜ | supabase/migrations/20260510190000_soft_delete.sql を本番DBに適用が必要 |
+
+---
+
 ## フェーズ1: FM←→CRM 連携（本日完了済み）
 
 | # | タスク | 状態 | 備考 |

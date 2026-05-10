@@ -17,6 +17,7 @@ async function fetchModIdMap(
       .from(table)
       .select('fm_record_id, fm_modification_id')
       .eq('tenant_id', TENANT_ID)
+      .is('deleted_at', null)
       .not('fm_record_id', 'is', null)
       .range(from, from + 999)
     if (!data || data.length === 0) break
@@ -41,15 +42,17 @@ export async function syncListRecords(_sinceModified?: string) {
   // 既存 modId を一括取得（変更なしレコードをスキップするため）
   const modIdMap = await fetchModIdMap('list_records', supabase)
 
+  const fmListIds = new Set<string>()
   while (true) {
     const result = await fmGetRecords(layout, { _offset: offset, _limit: BATCH_SIZE })
     const records = result.response?.data ?? []
     if (records.length === 0) break
 
     for (const rec of records) {
+      const fmRecordId = String(rec.recordId)
+      fmListIds.add(fmRecordId)
       try {
-        const fmRecordId = String(rec.recordId)
-        const fmModId    = String((rec as unknown as { modId: string }).modId ?? '')
+        const fmModId = String((rec as unknown as { modId: string }).modId ?? '')
 
         // modId が同じなら変更なし → スキップ
         if (fmModId !== '' && modIdMap.get(fmRecordId) === fmModId) {
@@ -101,9 +104,39 @@ export async function syncListRecords(_sinceModified?: string) {
     offset += BATCH_SIZE
   }
 
+  // FM に存在しないSupabaseレコードを削除
+  const allSupabase: { fm_record_id: string; id: string }[] = []
+  let from2 = 0
+  while (true) {
+    const { data } = await supabase
+      .from('list_records')
+      .select('id, fm_record_id')
+      .eq('tenant_id', TENANT_ID)
+      .is('deleted_at', null)
+      .not('fm_record_id', 'is', null)
+      .range(from2, from2 + 999)
+    if (!data || data.length === 0) break
+    allSupabase.push(...(data.filter((r) => r.fm_record_id) as { fm_record_id: string; id: string }[]))
+    if (data.length < 1000) break
+    from2 += 1000
+  }
+  let totalDeleted = 0
+  for (const r of allSupabase) {
+    if (!fmListIds.has(r.fm_record_id)) {
+      await supabase
+        .from('list_records')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', r.id)
+      totalDeleted++
+    }
+  }
+  console.log(`list sync: deleted=${totalDeleted}`)
+
   await fmLogout()
-  console.log(`list sync: synced=${totalSynced} skipped=${totalSkipped} errors=${totalErrors}`)
-  return { totalSynced, totalErrors, totalSkipped }
+  console.log(
+    `list sync: synced=${totalSynced} skipped=${totalSkipped} errors=${totalErrors} deleted=${totalDeleted}`
+  )
+  return { totalSynced, totalErrors, totalSkipped, totalDeleted }
 }
 
 // ---- コール履歴同期 ----
@@ -139,15 +172,17 @@ export async function syncCalls(_sinceModified?: string) {
     console.log(`customer_id マップ構築: ${customerIdMap.size}件`)
   }
 
+  const fmCallIds = new Set<string>()
   while (true) {
     const result = await fmGetRecords(layout, { _offset: offset, _limit: BATCH_SIZE })
     const records = result.response?.data ?? []
     if (records.length === 0) break
 
     for (const rec of records) {
+      const fmRecordId = String(rec.recordId)
+      fmCallIds.add(fmRecordId)
       try {
-        const fmRecordId = String(rec.recordId)
-        const fmModId    = String((rec as unknown as { modId: string }).modId ?? '')
+        const fmModId = String((rec as unknown as { modId: string }).modId ?? '')
 
         // modId が同じなら変更なし → スキップ
         if (fmModId !== '' && modIdMap.get(fmRecordId) === fmModId) {
@@ -202,7 +237,38 @@ export async function syncCalls(_sinceModified?: string) {
     offset += BATCH_SIZE
   }
 
+  const allSupabaseCalls: { fm_record_id: string; id: string }[] = []
+  let fromCalls = 0
+  while (true) {
+    const { data } = await supabase
+      .from('calls')
+      .select('id, fm_record_id')
+      .eq('tenant_id', TENANT_ID)
+      .is('deleted_at', null)
+      .not('fm_record_id', 'is', null)
+      .range(fromCalls, fromCalls + 999)
+    if (!data || data.length === 0) break
+    allSupabaseCalls.push(
+      ...(data.filter((r) => r.fm_record_id) as { fm_record_id: string; id: string }[])
+    )
+    if (data.length < 1000) break
+    fromCalls += 1000
+  }
+  let totalDeleted = 0
+  for (const r of allSupabaseCalls) {
+    if (!fmCallIds.has(r.fm_record_id)) {
+      await supabase
+        .from('calls')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', r.id)
+      totalDeleted++
+    }
+  }
+  console.log(`calls sync: deleted=${totalDeleted}`)
+
   await fmLogout()
-  console.log(`calls sync: synced=${totalSynced} skipped=${totalSkipped} errors=${totalErrors}`)
-  return { totalSynced, totalErrors, totalSkipped }
+  console.log(
+    `calls sync: synced=${totalSynced} skipped=${totalSkipped} errors=${totalErrors} deleted=${totalDeleted}`
+  )
+  return { totalSynced, totalErrors, totalSkipped, totalDeleted }
 }

@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     if (event === 'record_deleted') {
       const { error } = await supabase
         .from('list_records')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('tenant_id', TENANT_ID)
         .eq('fm_record_id', recordId)
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
     if (event === 'record_deleted') {
       const { error } = await supabase
         .from('calls')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('tenant_id', TENANT_ID)
         .eq('fm_record_id', recordId)
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })

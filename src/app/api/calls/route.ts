@@ -28,13 +28,15 @@ export async function GET(request: Request) {
   let query = supabase
     .from('calls')
     .select(
-      `id, call_date, call_start_time, call_end_time, call_duration_minutes,
-       call_result, agent_name, call_category, rep_level, appo_detail,
+      `id, call_date, call_start_time, call_end_time, call_duration_minutes, call_duration_seconds,
+       call_result, agent_name, call_category, rep_level, rep_level2, daihyo_level,
+       rep_hit, ci, appo_detail, list_name, call_history_id,
        list_record_id,
        list_records(company_name, representative_name, phone_numbers)`,
       { count: 'exact' }
     )
     .eq('tenant_id', member.tenant_id)
+    .is('deleted_at', null)
     .order('call_date', { ascending: false, nullsFirst: false })
     .order('call_start_time', { ascending: false, nullsFirst: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)

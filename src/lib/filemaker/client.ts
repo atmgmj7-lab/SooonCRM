@@ -198,3 +198,23 @@ export async function fmCreateRecord(
   const data = await res.json() as { response: { recordId: string } }
   return { recordId: data.response.recordId }
 }
+
+/** FM上の単一レコードをrecordIdで取得する（作成直後の顧客ID等FM生成フィールド取得用） */
+export async function fmGetRecordById(
+  recordId: string
+): Promise<{ fieldData: Record<string, unknown> } | null> {
+  const layout = process.env.FM_LAYOUT_LIST
+  if (!layout || !recordId) return null
+  const token = await getFMToken()
+  const res = await fetch(
+    `${getBaseUrl()}/layouts/${encodeURIComponent(layout)}/records/${recordId}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+  if (res.status === 401) {
+    _token = null
+    return fmGetRecordById(recordId)
+  }
+  if (!res.ok) return null
+  const data = await res.json() as { response: { data: { fieldData: Record<string, unknown> }[] } }
+  return data.response?.data?.[0] ?? null
+}

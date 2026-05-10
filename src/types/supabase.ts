@@ -653,6 +653,7 @@ export type Database = {
           claris_id: string | null
           created_at: string
           custom_data: Json
+          deleted_at: string | null
           direction: string
           duration_seconds: number | null
           fm_modification_id: string | null
@@ -690,6 +691,7 @@ export type Database = {
           claris_id?: string | null
           created_at?: string
           custom_data?: Json
+          deleted_at?: string | null
           direction?: string
           duration_seconds?: number | null
           fm_modification_id?: string | null
@@ -727,6 +729,7 @@ export type Database = {
           claris_id?: string | null
           created_at?: string
           custom_data?: Json
+          deleted_at?: string | null
           direction?: string
           duration_seconds?: number | null
           fm_modification_id?: string | null
@@ -1524,6 +1527,7 @@ export type Database = {
           customer_id: string | null
           deal_amount: number | null
           deal_closed_at: string | null
+          deleted_at: string | null
           fm_modification_id: string | null
           fm_record_id: string | null
           homepage_exists: string | null
@@ -1588,6 +1592,7 @@ export type Database = {
           customer_id?: string | null
           deal_amount?: number | null
           deal_closed_at?: string | null
+          deleted_at?: string | null
           fm_modification_id?: string | null
           fm_record_id?: string | null
           homepage_exists?: string | null
@@ -1652,6 +1657,7 @@ export type Database = {
           customer_id?: string | null
           deal_amount?: number | null
           deal_closed_at?: string | null
+          deleted_at?: string | null
           fm_modification_id?: string | null
           fm_record_id?: string | null
           homepage_exists?: string | null
