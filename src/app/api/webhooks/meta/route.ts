@@ -120,6 +120,30 @@ async function notifyFileMaker(record: Record<string, unknown>) {
   }
 }
 
+/** Meta Graph API から leadgen_id のフォーム回答を取得する（本番Webhookはfield_dataを含まないため必須） */
+async function fetchLeadgenFromMeta(leadgenId: string): Promise<FieldData[]> {
+  const token = process.env.META_ACCESS_TOKEN
+  if (!token) {
+    console.error('[meta-webhook] META_ACCESS_TOKEN not set — cannot fetch leadgen data')
+    return []
+  }
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v19.0/${leadgenId}?fields=field_data&access_token=${token}`
+    )
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as { error?: { message: string } }
+      console.error('[meta-webhook] Meta Graph API error:', err.error?.message ?? res.status)
+      return []
+    }
+    const data = await res.json() as { field_data?: FieldData[] }
+    return data.field_data ?? []
+  } catch (e) {
+    console.error('[meta-webhook] fetchLeadgenFromMeta failed:', e)
+    return []
+  }
+}
+
 // POST: Receive leadgen events from Meta Ads
 export async function POST(request: Request) {
   let body: Record<string, unknown>
@@ -129,13 +153,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
+  console.log('[meta-webhook] received:', JSON.stringify(body).slice(0, 500))
+
   if (!TENANT_ID) {
     return NextResponse.json({ error: 'DEFAULT_TENANT_ID not set' }, { status: 500 })
   }
 
   const supabase = createAdminClient()
 
-  // STEP1: webhook_leads に生データ保存
+  // Meta本番Webhookはfield_dataを含まず leadgen_id のみ送る。
+  // field_dataがない場合はGraph APIから取得してbodyに注入する。
+  const entry  = (body.entry as Array<Record<string, unknown>>)?.[0]
+  const change = (entry?.changes as Array<Record<string, unknown>>)?.[0]
+  const value  = change?.value as Record<string, unknown> | undefined
+  const leadgenId = value?.leadgen_id as string | undefined
+
+  if (leadgenId && !value?.field_data) {
+    console.log('[meta-webhook] no field_data in payload, fetching from Meta Graph API. leadgen_id:', leadgenId)
+    const fetched = await fetchLeadgenFromMeta(leadgenId)
+    if (fetched.length > 0) {
+      // bodyを書き換えてfield_dataを注入（以降の処理で使えるようにする）
+      ;(value as Record<string, unknown>).field_data = fetched
+      console.log('[meta-webhook] field_data fetched:', JSON.stringify(fetched))
+    } else {
+      console.warn('[meta-webhook] could not fetch field_data for leadgen_id:', leadgenId)
+    }
+  }
+
+  // STEP1: webhook_leads に生データ保存（field_data注入後のbodyを保存）
   const leadData = extractLeadData(body)
   const { data: webhookLead, error: wlError } = await supabase
     .from('webhook_leads')
@@ -154,10 +199,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: wlError.message }, { status: 500 })
   }
 
+  console.log('[meta-webhook] webhook_lead saved, id:', webhookLead.id, 'phone extracted:', leadData.phone)
+
   // STEP2: 電話番号正規化
   const phone = normalizePhoneNumber(leadData.phone)
   if (!phone) {
-    return NextResponse.json({ ok: true, note: 'no phone number' })
+    console.warn('[meta-webhook] no phone number, stopping. leadgen_id:', leadgenId, 'raw phone:', leadData.phone)
+    return NextResponse.json({ ok: true, note: 'no phone number', webhook_lead_id: webhookLead.id })
   }
 
   // STEP3: 名寄せ（既存顧客検索）

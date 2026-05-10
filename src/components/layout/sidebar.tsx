@@ -5,17 +5,18 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Megaphone, FileText, PhoneCall,
   Handshake, Users, BarChart2, Bot, Settings,
-  PanelLeftClose, PanelLeftOpen, ListChecks,
+  PanelLeftClose, PanelLeftOpen, ListChecks, Inbox,
 } from 'lucide-react'
 
 type NavItem =
-  | { href: string; label: string; icon: React.ElementType; accent?: boolean }
+  | { href: string; label: string; icon: React.ElementType; accent?: boolean; indent?: boolean }
   | { divider: true }
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard',  label: 'ダッシュボード',  icon: LayoutDashboard },
   { href: '/ads',        label: '広告マネージャー', icon: Megaphone },
   { href: '/leads',      label: 'リード管理',      icon: FileText },
+  { href: '/leads/inbox', label: '受信リード',     icon: Inbox, indent: true },
   { href: '/calls',      label: 'コール履歴',      icon: PhoneCall },
   { href: '/list',       label: 'リスト情報',      icon: ListChecks },
   { href: '/deals',      label: '商談データ',      icon: Handshake },
@@ -112,9 +113,27 @@ export function Sidebar() {
             return <div key={i} style={{ height: 1, background: '#1E293B', margin: '6px 0' }} />
           }
           const Icon = item.icon
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+          const isIndent = 'indent' in item && item.indent
+          // 親メニューはサブページにいるとき active を外す（サブ項目が active になるため）
+          const isActive = isIndent
+            ? pathname === item.href || pathname.startsWith(item.href + '/')
+            : pathname === item.href || (
+                pathname.startsWith(item.href + '/') &&
+                !NAV_ITEMS.some(n => 'indent' in n && n.indent && pathname.startsWith((n as { href: string }).href))
+              )
           return (
-            <div key={item.href} style={{ position: 'relative' }} className="sidebar-nav-item-wrap">
+            <div
+              key={item.href}
+              style={{ position: 'relative', paddingLeft: isIndent && !collapsed ? 12 : 0 }}
+              className="sidebar-nav-item-wrap"
+            >
+              {/* サブ項目のガイドライン */}
+              {isIndent && !collapsed && (
+                <div style={{
+                  position: 'absolute', left: 18, top: 0, bottom: 0,
+                  width: 1, background: '#1E293B',
+                }} />
+              )}
               <Link
                 href={item.href}
                 title={collapsed ? item.label : undefined}
@@ -122,12 +141,12 @@ export function Sidebar() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 9,
-                  padding: collapsed ? '8px 0' : '7px 10px',
+                  padding: collapsed ? '8px 0' : isIndent ? '5px 10px 5px 14px' : '7px 10px',
                   justifyContent: collapsed ? 'center' : 'flex-start',
                   borderRadius: 6,
-                  fontSize: 12.5,
+                  fontSize: isIndent ? 12 : 12.5,
                   fontWeight: isActive ? 500 : 400,
-                  color: isActive ? '#2DD4BF' : item.accent ? '#0D9488' : '#94A3B8',
+                  color: isActive ? '#2DD4BF' : item.accent ? '#0D9488' : isIndent ? '#64748B' : '#94A3B8',
                   background: isActive ? 'rgba(13,148,136,.2)' : 'transparent',
                   textDecoration: 'none',
                   transition: 'background .12s, color .12s',
@@ -143,11 +162,11 @@ export function Sidebar() {
                 onMouseLeave={(e) => {
                   if (!isActive) {
                     e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = item.accent ? '#0D9488' : '#94A3B8'
+                    e.currentTarget.style.color = item.accent ? '#0D9488' : isIndent ? '#64748B' : '#94A3B8'
                   }
                 }}
               >
-                <Icon size={14} style={{ flexShrink: 0 }} />
+                <Icon size={isIndent ? 12 : 14} style={{ flexShrink: 0 }} />
                 {!collapsed && <span style={{ flex: 1 }}>{item.label}</span>}
               </Link>
             </div>
