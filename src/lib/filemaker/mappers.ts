@@ -35,13 +35,41 @@ export function mapFMListToSupabase(fmFields: Record<string, unknown>) {
   }
 }
 
+// mapFMCallToSupabase が列に落とす FM フィールド（それ以外は fm_webhook_extras に入れる）
+const FM_CALL_FIELDS_TO_COLUMNS = new Set([
+  '顧客ID',
+  '対応履歴ID',
+  'コール結果',
+  'コール開始日',
+  'コール開始時刻',
+  'コール終了時刻',
+  'コール時間_分',
+  'コール時間_秒',
+  'クラリスID',
+  '担当者名',
+  '代表hit',
+  'CL',
+  'リストレベル',
+  '対応カテゴリ',
+  '担当レベル',
+  'アポ情報詳細',
+  '非表示',
+  'リスト仕入れ先',
+  '問い合わせ日',
+  'リスト',
+])
+
 // ---- コール履歴 → calls ----
 export function mapFMCallToSupabase(fmFields: Record<string, unknown>) {
-  return {
+  const callDate = parseDateJP(fmFields['コール開始日'] as string)
+  const startTime = fmFields['コール開始時刻'] as string | null
+
+  const row = {
     // 呼び出し側で list_record_id に変換する
     fm_customer_id:        fmFields['顧客ID']          as string | null,
-    call_date:             parseDateJP(fmFields['コール開始日'] as string),
-    call_start_time:       fmFields['コール開始時刻']  as string | null,
+    call_date:             callDate ?? new Date().toISOString().slice(0, 10),
+    call_start_time:       startTime,
+    called_at:             parseCallStartedAtTokyo(callDate, startTime),
     call_end_time:         fmFields['コール終了時刻']  as string | null,
     call_duration_minutes: parseFloat(String(fmFields['コール時間_分'] ?? '0')) || null,
     call_duration_seconds: parseFloat(String(fmFields['コール時間_秒'] ?? '0')) || null,
@@ -56,12 +84,37 @@ export function mapFMCallToSupabase(fmFields: Record<string, unknown>) {
     call_result:           fmFields['コール結果']       as string | null,
     hidden_flag:           fmFields['非表示']           as string | null,
     list_source:           fmFields['リスト仕入れ先']  as string | null,
+    list_name:             fmFields['リスト']           as string | null,
     call_history_id:       fmFields['対応履歴ID']       as string | null,
     inquiry_date:          parseDateJP(fmFields['問い合わせ日'] as string),
   }
+
+  const fm_webhook_extras: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(fmFields)) {
+    if (k === 'fm_record_id') continue
+    if (FM_CALL_FIELDS_TO_COLUMNS.has(k)) continue
+    if (v === undefined || v === null) continue
+    if (typeof v === 'string' && v.trim() === '') continue
+    fm_webhook_extras[k] = v
+  }
+
+  return { ...row, fm_webhook_extras }
 }
 
 // ---- ヘルパー関数 ----
+/** コール開始日 + 開始時刻を JST として解釈し、timestamptz 文字列にする */
+function parseCallStartedAtTokyo(dateIsoYmd: string | null, timeRaw: unknown): string | null {
+  if (!dateIsoYmd) return null
+  const t = typeof timeRaw === 'string' ? timeRaw.trim() : ''
+  const tm = t.match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/)
+  const hh = ((tm?.[1] ?? '0').padStart(2, '0'))
+  const mm = ((tm?.[2] ?? '0').padStart(2, '0'))
+  const ss = ((tm?.[3] ?? '0').padStart(2, '0'))
+  const d = new Date(`${dateIsoYmd}T${hh}:${mm}:${ss}+09:00`)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toISOString().replace('Z', '+00:00')
+}
+
 function parseDateJP(val?: string): string | null {
   if (!val || val === '?') return null
   // FM形式: "2025/04/15" → ISO "2025-04-15"

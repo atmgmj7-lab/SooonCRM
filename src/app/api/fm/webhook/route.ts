@@ -1,6 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
+import type { Json } from '@/types/supabase'
 import { mapFMListToSupabase, mapFMCallToSupabase } from '@/lib/filemaker/mappers'
+import { mergeFmCallExtrasIntoCustomData } from '@/lib/filemaker/webhookNormalize'
 
 const TENANT_ID = 'dde9bea6-a017-49e6-a1b6-88494e1e3b4d'
 
@@ -83,6 +85,20 @@ export async function POST(req: NextRequest) {
     const mapped = mapFMCallToSupabase({ ...fmData, ...{ fm_record_id: recordId } })
     const customerId = mapped.fm_customer_id
 
+    let customDataOverride: Json | undefined
+    const { fm_customer_id: _c, fm_webhook_extras, ...callColumns } = mapped
+    void _c
+
+    if (Object.keys(fm_webhook_extras).length > 0) {
+      const { data: prevRow } = await supabase
+        .from('calls')
+        .select('custom_data')
+        .eq('fm_record_id', recordId)
+        .maybeSingle()
+
+      customDataOverride = mergeFmCallExtrasIntoCustomData(prevRow?.custom_data, fm_webhook_extras)
+    }
+
     // Resolve list_record_id from customer_id
     let listRecordId: string | null = null
     if (customerId) {
@@ -111,11 +127,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, action: 'deleted', table: 'calls' })
     }
 
-    const { fm_customer_id: _removed, ...callPayload } = mapped
     const { data, error } = await supabase
       .from('calls')
       .upsert(
-        { ...callPayload, tenant_id: TENANT_ID, list_record_id: listRecordId, fm_record_id: recordId },
+        {
+          ...callColumns,
+          ...(customDataOverride !== undefined ? { custom_data: customDataOverride } : {}),
+          tenant_id: TENANT_ID,
+          list_record_id: listRecordId,
+          fm_record_id: recordId,
+        },
         { onConflict: 'fm_record_id' }
       )
       .select('id')

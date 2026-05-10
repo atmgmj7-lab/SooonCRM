@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
+import type { Json } from '@/types/supabase'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mapFMListToSupabase, mapFMCallToSupabase } from '@/lib/filemaker/mappers'
+import { mergeFmCallExtrasIntoCustomData, normalizeFmWebhookBody } from '@/lib/filemaker/webhookNormalize'
 
 export async function POST(request: Request) {
   // FM Webhook 認証チェック
@@ -22,14 +24,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ skipped: true })
   }
 
-  const fmRecordId  = body.fm_record_id  as string | undefined
-  const fmFields    = body.fm_fields     as Record<string, unknown> | undefined
-  const recordType  = (body.record_type  as string | undefined) ?? 'list_record'
-  const tenantId    = process.env.DEFAULT_TENANT_ID
+  const { fm_record_id: fmRecordId, record_type: recordTypeRaw, fm_fields: fmFields } =
+    normalizeFmWebhookBody(body)
 
-  if (!fmRecordId || !fmFields) {
+  const recordType = recordTypeRaw ?? 'list_record'
+  const tenantId = process.env.DEFAULT_TENANT_ID
+
+  if (!fmRecordId || Object.keys(fmFields).length === 0) {
     return NextResponse.json(
-      { error: 'fm_record_id and fm_fields are required' },
+      { error: 'fm_record_id and fm_fields (nested or fm_fields.* flat keys) are required' },
       { status: 400 }
     )
   }
@@ -39,7 +42,18 @@ export async function POST(request: Request) {
   // --- コール履歴更新 ---
   if (recordType === 'call') {
     const mapped = mapFMCallToSupabase(fmFields)
-    const { fm_customer_id, ...callData } = mapped
+    const { fm_customer_id, fm_webhook_extras, ...callColumns } = mapped
+
+    let customDataOverride: Json | undefined
+    if (Object.keys(fm_webhook_extras).length > 0) {
+      const { data: prevRow } = await supabase
+        .from('calls')
+        .select('custom_data')
+        .eq('fm_record_id', fmRecordId)
+        .maybeSingle()
+
+      customDataOverride = mergeFmCallExtrasIntoCustomData(prevRow?.custom_data, fm_webhook_extras)
+    }
 
     // list_record_id を顧客IDで解決
     let listRecordId: string | null = null
@@ -57,10 +71,11 @@ export async function POST(request: Request) {
       .from('calls')
       .upsert(
         {
-          ...callData,
-          fm_record_id:    fmRecordId,
-          list_record_id:  listRecordId,
-          tenant_id:       tenantId ?? null,
+          ...callColumns,
+          ...(customDataOverride !== undefined ? { custom_data: customDataOverride } : {}),
+          fm_record_id: fmRecordId,
+          list_record_id: listRecordId,
+          tenant_id: tenantId ?? null,
         },
         { onConflict: 'fm_record_id' }
       )
