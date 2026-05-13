@@ -57,7 +57,17 @@ function buildLeadSourceData(body: Record<string, unknown>): Record<string, unkn
   }
 }
 
-function extractLeadData(body: Record<string, unknown>) {
+function extractLeadData(body: Record<string, unknown>): {
+  phone: string
+  ad_name: string
+  company_name: string
+  representative_name: string
+  prefecture: string
+  rep_title: string
+  adset_id: string
+  campaign_id: string
+  campaign_name: string
+} {
   const entry  = (body.entry as Array<Record<string, unknown>>)?.[0]
   const change = (entry?.changes as Array<Record<string, unknown>>)?.[0]
   const value  = change?.value as Record<string, unknown> | undefined
@@ -73,6 +83,15 @@ function extractLeadData(body: Record<string, unknown>) {
       company_name:        fields['company_name'] ?? fields['会社名'] ?? '',
       representative_name: fields['full_name'] ?? fields['代表名'] ?? '',
       prefecture:          fields['state'] ?? fields['県名'] ?? fields['都道府県'] ?? '',
+      rep_title:
+        fields['job_title'] ??
+        fields['work_job_title'] ??
+        fields['役職'] ??
+        fields['representative_title'] ??
+        '',
+      adset_id:            (value?.adset_id as string) ?? '',
+      campaign_id:         (value?.campaign_id as string) ?? '',
+      campaign_name:       (value?.campaign_name as string) ?? '',
     }
   }
 
@@ -82,6 +101,10 @@ function extractLeadData(body: Record<string, unknown>) {
     company_name:        (body.company_name as string) ?? '',
     representative_name: (body.representative_name as string) ?? '',
     prefecture:          (body.prefecture as string) ?? (body.county as string) ?? '',
+    rep_title:           '',
+    adset_id:            (value?.adset_id as string) ?? '',
+    campaign_id:         (value?.campaign_id as string) ?? '',
+    campaign_name:       (value?.campaign_name as string) ?? '',
   }
 }
 
@@ -115,26 +138,62 @@ async function notifyFileMaker(record: Record<string, unknown>) {
 }
 
 /** Meta Graph API から leadgen_id のフォーム回答を取得する（本番Webhookはfield_dataを含まないため必須） */
-async function fetchLeadgenFromMeta(leadgenId: string): Promise<FieldData[]> {
+async function fetchLeadgenFromMeta(leadgenId: string): Promise<{
+  fieldData: FieldData[]
+  adName: string
+  adsetId: string
+  campaignId: string
+  campaignName: string
+  adId: string
+}> {
+  const empty: {
+    fieldData: FieldData[]
+    adName: string
+    adsetId: string
+    campaignId: string
+    campaignName: string
+    adId: string
+  } = {
+    fieldData: [],
+    adName: '',
+    adsetId: '',
+    campaignId: '',
+    campaignName: '',
+    adId: '',
+  }
   const token = process.env.META_ACCESS_TOKEN
   if (!token) {
     console.error('[meta-webhook] META_ACCESS_TOKEN not set — cannot fetch leadgen data')
-    return []
+    return empty
   }
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v19.0/${leadgenId}?fields=field_data&access_token=${token}`
+      `https://graph.facebook.com/v19.0/${leadgenId}?fields=field_data,ad_id,ad_name,adset_id,campaign_id,campaign_name&access_token=${token}`
     )
     if (!res.ok) {
       const err = await res.json().catch(() => ({})) as { error?: { message: string } }
       console.error('[meta-webhook] Meta Graph API error:', err.error?.message ?? res.status)
-      return []
+      return empty
     }
-    const data = await res.json() as { field_data?: FieldData[] }
-    return data.field_data ?? []
+    const data = await res.json() as {
+      field_data?: FieldData[]
+      ad_id?: string
+      ad_name?: string
+      adset_id?: string
+      campaign_id?: string
+      campaign_name?: string
+    }
+    return {
+      fieldData: data.field_data ?? [],
+      adName: data.ad_name ?? '',
+      adsetId: data.adset_id ?? '',
+      campaignId: data.campaign_id ?? '',
+      campaignName: data.campaign_name ?? '',
+      adId: data.ad_id ?? '',
+    }
   } catch (e) {
     console.error('[meta-webhook] fetchLeadgenFromMeta failed:', e)
-    return []
+    return empty
   }
 }
 
@@ -165,12 +224,23 @@ export async function POST(request: Request) {
   if (leadgenId && !value?.field_data) {
     console.log('[meta-webhook] no field_data in payload, fetching from Meta Graph API. leadgen_id:', leadgenId)
     const fetched = await fetchLeadgenFromMeta(leadgenId)
-    if (fetched.length > 0) {
-      // bodyを書き換えてfield_dataを注入（以降の処理で使えるようにする）
-      ;(value as Record<string, unknown>).field_data = fetched
-      console.log('[meta-webhook] field_data fetched:', JSON.stringify(fetched))
+    if (fetched.fieldData.length > 0) {
+      ;(value as Record<string, unknown>).field_data = fetched.fieldData
+      console.log('[meta-webhook] field_data fetched:', JSON.stringify(fetched.fieldData))
     } else {
       console.warn('[meta-webhook] could not fetch field_data for leadgen_id:', leadgenId)
+    }
+    if (fetched.adName) {
+      ;(value as Record<string, unknown>).ad_name = fetched.adName
+    }
+    if (fetched.adsetId) {
+      ;(value as Record<string, unknown>).adset_id = fetched.adsetId
+    }
+    if (fetched.campaignId) {
+      ;(value as Record<string, unknown>).campaign_id = fetched.campaignId
+    }
+    if (fetched.campaignName) {
+      ;(value as Record<string, unknown>).campaign_name = fetched.campaignName
     }
   }
 
@@ -249,6 +319,7 @@ export async function POST(request: Request) {
         ad_name:             leadData.ad_name || null,
         company_name:        leadData.company_name || `【${leadData.ad_name || '広告'}からの問い合わせ】`,
         representative_name: leadData.representative_name || null,
+        rep_title:           leadData.rep_title || null,
         prefecture:          leadData.prefecture || null,
         source:              'meta_ads',
         webhook_lead_id:     webhookLead.id,
@@ -275,7 +346,25 @@ export async function POST(request: Request) {
   }
 
   // STEP4: leads に INSERT（list_record_id と customer_id を必ずセット）
+  // leadgen_id で既存リードをチェック（pull-meta-leads が先に取り込んだ場合の重複防止）
+  if (leadgenId) {
+    const { data: existingLead } = await supabase
+      .from('leads')
+      .select('id')
+      .eq('tenant_id', TENANT_ID)
+      .contains('source_data', { meta_lead_id: leadgenId })
+      .maybeSingle()
+    if (existingLead) {
+      await supabase
+        .from('webhook_leads')
+        .update({ match_status: 'matched', status: 'skipped_duplicate' })
+        .eq('id', webhookLead.id)
+      return NextResponse.json({ ok: true, note: 'lead already exists', customer_id: customerId })
+    }
+  }
+
   const now = new Date().toISOString()
+  const inquiryDate = now.split('T')[0]
   const { error: leadError } = await supabase
     .from('leads')
     .insert({
@@ -284,12 +373,18 @@ export async function POST(request: Request) {
       list_record_id:      listRecordId,
       ad_name:             leadData.ad_name || null,
       inquiry_at:          now,
+      inquiry_date:        inquiryDate,
       source:              'meta_ads',
-      source_data:         buildLeadSourceData(body),
+      source_data:         {
+        ...buildLeadSourceData(body),
+        meta_lead_id: leadgenId ?? null,
+      },
       status:              '未対応',
       webhook_lead_id:     webhookLead.id,
       company_name:        leadData.company_name || null,
       representative_name: leadData.representative_name || null,
+      rep_title:           leadData.rep_title || null,
+      adset_id:            leadData.adset_id || null,
       phone_number:        phone,
       prefecture:          leadData.prefecture || null,
     })

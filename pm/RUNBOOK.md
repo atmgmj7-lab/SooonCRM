@@ -171,13 +171,24 @@ curl -X POST https://[your-domain]/api/admin/pull-meta-leads \
 
 ---
 
-## 手順6: FM 手動フルシンク
+## 手順6: FM 手動フルシンク（スクリプト版）
 
 ```bash
 ! npx tsx scripts/run-full-sync.ts
 ```
 
 FM の全件データを Supabase に取り込みます（変更のあったレコードのみ更新）。
+
+---
+
+## 手順6-B: FM 手動差分同期（UI版）
+
+ブラウザで `/admin/sync` を開く。
+
+- **リスト情報同期** ボタン → `POST /api/admin/sync-from-fm`
+- **コール履歴同期** ボタン → `POST /api/admin/sync-calls`
+
+結果（同期件数・スキップ件数・エラー件数）が画面に表示されます。
 
 ---
 

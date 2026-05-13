@@ -59,7 +59,7 @@ npx ecc-agentshield scan   # ECCセキュリティスキャン（PR前必須）
 コード生成・ファイル編集はCursor Agentに委譲する。Claude Codeは設計・レビュー・デプロイのみ担当。
 
 ```bash
-DISPATCH="python3 /Users/narikiyotakashi/Desktop/dev/claude-cursor-orchestration/src/cursor_dispatch.py"
+DISPATCH="python3 /Users/narikiyo/dev-all-projects/claude-cursor-orchestration/src/cursor_dispatch.py"
 
 # 単体タスク
 $DISPATCH "修正内容の説明" --workspace $PWD --model composer-2-fast

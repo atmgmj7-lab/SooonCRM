@@ -32,6 +32,9 @@ export async function GET(request: Request) {
   const status           = searchParams.get('status') ?? ''
   const searchRaw        = searchParams.get('search') ?? ''
   const sortRaw          = searchParams.get('sort') ?? ''
+  const ad_names_raw    = searchParams.get('ad_names')    ?? ''
+  const prefectures_raw = searchParams.get('prefectures') ?? ''
+  const sources_raw     = searchParams.get('sources')     ?? ''
 
   let searchConditions: SearchCondition[] = []
   let sorts: SortKey[] = [{ field: 'created_at', dir: 'desc' }]
@@ -68,6 +71,14 @@ export async function GET(request: Request) {
   }
   if (last_call_result) query = query.eq('last_call_result', last_call_result)
   if (status) query = query.eq('status', status)
+
+  const ad_names_list    = ad_names_raw    ? ad_names_raw.split(',').filter(Boolean)    : []
+  const prefectures_list = prefectures_raw ? prefectures_raw.split(',').filter(Boolean) : []
+  const sources_list     = sources_raw     ? sources_raw.split(',').filter(Boolean)     : []
+
+  if (ad_names_list.length > 0)    query = query.in('ad_name', ad_names_list)
+  if (prefectures_list.length > 0) query = query.in('prefecture', prefectures_list)
+  if (sources_list.length > 0)     query = query.in('source', sources_list)
 
   // Advanced search conditions
   for (const cond of searchConditions) {

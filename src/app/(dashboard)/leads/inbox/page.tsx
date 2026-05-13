@@ -17,6 +17,7 @@ type WebhookLead = {
   // list_records から結合
   company_name?: string | null
   representative_name?: string | null
+  rep_title?: string | null
   prefecture?: string | null
   phone?: string | null
   fm_synced?: boolean
@@ -31,15 +32,25 @@ const STATUS = {
 
 function getFieldData(raw: Record<string, unknown> | null): FieldEntry[] {
   if (!raw) return []
-  const fd = raw.field_data as FieldEntry[] | undefined
-  return fd ?? []
+  // Meta webhook payload: raw.entry[0].changes[0].value.field_data
+  const entry = (raw.entry as Array<Record<string, unknown>>)?.[0]
+  const change = (entry?.changes as Array<Record<string, unknown>>)?.[0]
+  const value = change?.value as Record<string, unknown> | undefined
+  if (value?.field_data && Array.isArray(value.field_data)) {
+    return value.field_data as FieldEntry[]
+  }
+  // Fallback: top-level field_data (test payloads)
+  if (raw.field_data && Array.isArray(raw.field_data)) {
+    return raw.field_data as FieldEntry[]
+  }
+  return []
 }
 
 function extractPhone(raw: Record<string, unknown> | null): string {
   if (!raw) return '—'
-  const fd = raw.field_data as FieldEntry[] | undefined
-  if (fd) {
-    const f = fd.find(f => ['phone_number', 'phone', '電話番号'].includes(f.name))
+  const fields = getFieldData(raw)
+  if (fields.length > 0) {
+    const f = fields.find(f => ['phone_number', 'phone', '電話番号'].includes(f.name))
     return f?.values?.[0] ?? '—'
   }
   return String(raw.phone_number ?? raw.phone ?? '—')
@@ -47,10 +58,10 @@ function extractPhone(raw: Record<string, unknown> | null): string {
 
 function extractField(raw: Record<string, unknown> | null, ...keys: string[]): string {
   if (!raw) return '—'
-  const fd = raw.field_data as FieldEntry[] | undefined
-  if (fd) {
+  const fields = getFieldData(raw)
+  if (fields.length > 0) {
     for (const k of keys) {
-      const f = fd.find(f => f.name === k)
+      const f = fields.find(f => f.name === k)
       if (f?.values?.[0]) return f.values[0]
     }
   }
@@ -93,6 +104,7 @@ export default function InboxPage() {
     const lrMap = new Map<string, {
       company_name: string | null
       representative_name: string | null
+      rep_title: string | null
       prefecture: string | null
       phone_numbers: string[] | null
       fm_record_id: string | null
@@ -101,7 +113,7 @@ export default function InboxPage() {
     if (listIds.length > 0) {
       const { data: lrs } = await supabase
         .from('list_records')
-        .select('id, company_name, representative_name, prefecture, phone_numbers, fm_record_id')
+        .select('id, company_name, representative_name, rep_title, prefecture, phone_numbers, fm_record_id')
         .in('id', listIds)
       lrs?.forEach(lr => lrMap.set(lr.id, lr))
     }
@@ -123,6 +135,7 @@ export default function InboxPage() {
         ...wl,
         company_name:        lr?.company_name ?? extractField(wl.raw_data, 'company_name', '会社名'),
         representative_name: lr?.representative_name ?? extractField(wl.raw_data, 'full_name', '代表名'),
+        rep_title:           lr?.rep_title ?? extractField(wl.raw_data, 'job_title', 'work_job_title', '役職'),
         prefecture:          lr?.prefecture ?? extractField(wl.raw_data, 'state', '都道府県', '県名'),
         phone,
         fm_synced:   !!lr?.fm_record_id,
@@ -181,12 +194,13 @@ export default function InboxPage() {
     fontSize: 12,
     fontWeight: tab === t ? 600 : 400,
     color: tab === t ? 'var(--color-blue)' : 'var(--color-gray-600)',
-    borderBottom: tab === t ? '2px solid var(--color-blue)' : '2px solid transparent',
-    background: 'none',
-    border: 'none',
+    borderTop: 'none',
+    borderLeft: 'none',
+    borderRight: 'none',
     borderBottomWidth: 2,
     borderBottomStyle: 'solid' as const,
     borderBottomColor: tab === t ? 'var(--color-blue)' : 'transparent',
+    background: 'none',
     cursor: 'pointer',
     whiteSpace: 'nowrap' as const,
   })
@@ -271,6 +285,7 @@ export default function InboxPage() {
               <th className={th} style={{ color: 'var(--color-gray-600)' }}>広告名</th>
               <th className={th} style={{ color: 'var(--color-gray-600)' }}>会社名</th>
               <th className={th} style={{ color: 'var(--color-gray-600)' }}>代表名</th>
+              <th className={th} style={{ color: 'var(--color-gray-600)' }}>役職</th>
               <th className={th} style={{ color: 'var(--color-gray-600)' }}>都道府県</th>
               <th className={th} style={{ color: 'var(--color-gray-600)' }}>電話番号</th>
               <th className={th} style={{ color: 'var(--color-gray-600)' }}>ステータス</th>
@@ -281,14 +296,14 @@ export default function InboxPage() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={10} style={{ padding: '48px 0', textAlign: 'center', color: 'var(--color-gray-400)', fontSize: 13 }} className="animate-pulse">
+                <td colSpan={11} style={{ padding: '48px 0', textAlign: 'center', color: 'var(--color-gray-400)', fontSize: 13 }} className="animate-pulse">
                   読み込み中…
                 </td>
               </tr>
             )}
             {!loading && filtered.length === 0 && (
               <tr>
-                <td colSpan={10} style={{ padding: '48px 0', textAlign: 'center', color: 'var(--color-gray-400)', fontSize: 13 }}>
+                <td colSpan={11} style={{ padding: '48px 0', textAlign: 'center', color: 'var(--color-gray-400)', fontSize: 13 }}>
                   リードはありません
                 </td>
               </tr>
@@ -319,6 +334,9 @@ export default function InboxPage() {
                   </td>
                   <td className={td} style={{ color: 'var(--color-gray-700)' }}>
                     {lead.representative_name ?? '—'}
+                  </td>
+                  <td className={td} style={{ color: 'var(--color-gray-700)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {lead.rep_title ?? extractField(lead.raw_data, 'job_title', 'work_job_title', '役職')}
                   </td>
                   <td className={td} style={{ color: 'var(--color-gray-600)' }}>
                     {lead.prefecture ?? '—'}
@@ -437,6 +455,8 @@ export default function InboxPage() {
                   ['ID',      modal.id],
                   ['ソース', modal.source ?? '—'],
                   ['広告名', modal.ad_name ?? '—'],
+                  ['広告セット', extractField(modal.raw_data, 'adset_id')],
+                  ['役職', modal.rep_title ?? extractField(modal.raw_data, 'job_title', 'work_job_title', '役職')],
                   ['マッチ', modal.match_status ?? '—'],
                 ].map(([k, v]) => (
                   <div key={k} style={{ display: 'flex', gap: 12 }}>

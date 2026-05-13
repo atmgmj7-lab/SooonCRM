@@ -14,6 +14,9 @@ import { fmCreateRecord, fmFindByPhone } from '@/lib/filemaker/client'
 const TENANT_ID    = process.env.DEFAULT_TENANT_ID!
 const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN!
 const ACCOUNT_ID   = process.env.META_AD_ACCOUNT_ID!
+const PAGE_ID      = process.env.META_FB_PAGE_ID ?? ''
+// META_FORM_IDS にカンマ区切りでフォームIDを設定すると、フォーム一覧API（pages_manage_ads 権限必須）をスキップして直接リード取得できる
+const ENV_FORM_IDS = process.env.META_FORM_IDS ? process.env.META_FORM_IDS.split(',').map(s => s.trim()).filter(Boolean) : []
 const META_BASE    = 'https://graph.facebook.com/v19.0'
 
 // ---- Meta API ヘルパー ----
@@ -23,7 +26,11 @@ interface MetaLeadField { name: string; values: string[] }
 interface MetaLeadRow {
   id: string
   created_time: string
+  ad_id?: string
   ad_name?: string
+  adset_id?: string
+  campaign_id?: string
+  campaign_name?: string
   form_id?: string
   field_data: MetaLeadField[]
 }
@@ -31,7 +38,11 @@ interface MetaLeadRow {
 interface MetaForm { id: string; name: string; leads_count?: number }
 
 async function getLeadForms(): Promise<MetaForm[]> {
-  const url = new URL(`${META_BASE}/act_${ACCOUNT_ID}/leadgen_forms`)
+  // leadgen_forms は Page エンドポイント配下。META_FB_PAGE_ID が必要
+  if (!PAGE_ID) {
+    throw new Error('META_FB_PAGE_ID が設定されていません。Facebook ページIDを .env.local に追加してください。')
+  }
+  const url = new URL(`${META_BASE}/${PAGE_ID}/leadgen_forms`)
   url.searchParams.set('access_token', ACCESS_TOKEN)
   url.searchParams.set('fields', 'id,name,leads_count')
   url.searchParams.set('limit', '100')
@@ -54,7 +65,7 @@ async function getLeadsFromForm(
   let url: string | null = (() => {
     const u = new URL(`${META_BASE}/${formId}/leads`)
     u.searchParams.set('access_token', ACCESS_TOKEN)
-    u.searchParams.set('fields', 'id,created_time,ad_name,field_data')
+    u.searchParams.set('fields', 'id,created_time,ad_id,ad_name,adset_id,campaign_id,campaign_name,field_data')
     u.searchParams.set('limit', '100')
     if (since) u.searchParams.set('filtering', JSON.stringify([
       { field: 'time_created', operator: 'GREATER_THAN', value: Math.floor(new Date(since).getTime() / 1000) }
@@ -95,6 +106,7 @@ function extractLeadFields(fieldData: MetaLeadField[]) {
     company_name:        f['company_name'] ?? f['会社名'] ?? '',
     representative_name: f['full_name'] ?? f['代表名'] ?? '',
     prefecture:          f['state'] ?? f['県名'] ?? f['都道府県'] ?? '',
+    rep_title:           f['job_title'] ?? f['work_job_title'] ?? f['役職'] ?? '',
   }
 }
 
@@ -121,12 +133,16 @@ export async function POST(request: Request) {
   const body = await request.json() as { since?: string; until?: string; form_ids?: string[] }
   const { since, until, form_ids } = body
 
-  // フォーム一覧取得（form_ids 未指定の場合は全フォーム）
+  // フォーム一覧取得
+  // 優先順位: 1) リクエストbodyの form_ids  2) 環境変数 META_FORM_IDS  3) Page API（pages_manage_ads 権限が必要）
   let forms: MetaForm[]
   try {
-    forms = await getLeadForms()
     if (form_ids && form_ids.length > 0) {
-      forms = forms.filter(f => form_ids.includes(f.id))
+      forms = form_ids.map(id => ({ id, name: id }))
+    } else if (ENV_FORM_IDS.length > 0) {
+      forms = ENV_FORM_IDS.map(id => ({ id, name: id }))
+    } else {
+      forms = await getLeadForms()
     }
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 })
@@ -235,35 +251,81 @@ export async function POST(request: Request) {
           listRecordId = newRecord.id
         }
 
-        // leads に INSERT（重複を避けるため created_time ベースの確認）
+        // leads: meta_lead_id があれば同一、なければ webhook 先行行（webhook_lead_id あり）を UPSERT 相当でマージ
         const inquiryAt = new Date(lead.created_time).toISOString()
+        const metaInquiryDate = inquiryAt.split('T')[0]
+
         const { data: existingLead } = await supabase
           .from('leads')
           .select('id')
           .eq('tenant_id', TENANT_ID)
-          .eq('list_record_id', listRecordId)
-          .eq('inquiry_at', inquiryAt)
+          .contains('source_data', { meta_lead_id: lead.id })
           .maybeSingle()
 
-        if (!existingLead) {
-          const { error: leadErr } = await supabase.from('leads').insert({
-            tenant_id:           TENANT_ID,
-            customer_id:         customerId,
-            list_record_id:      listRecordId,
-            ad_name:             lead.ad_name ?? null,
-            inquiry_at:          inquiryAt,
-            source:              'meta_ads',
-            source_data:         { field_data: lead.field_data, meta_lead_id: lead.id },
-            status:              '未対応',
-            company_name:        extracted.company_name || null,
-            representative_name: extracted.representative_name || null,
-            phone_number:        phone,
-            prefecture:          extracted.prefecture || null,
-          })
-          if (leadErr) throw new Error(leadErr.message)
-          totalImported++
-        } else {
+        if (existingLead) {
           totalSkipped++
+        } else {
+          const { data: webhookDup, error: webhookDupErr } = await supabase
+            .from('leads')
+            .select('id, source_data')
+            .eq('tenant_id', TENANT_ID)
+            .eq('list_record_id', listRecordId)
+            .eq('source', 'meta_ads')
+            .not('webhook_lead_id', 'is', null)
+            .limit(1)
+            .maybeSingle()
+
+          if (webhookDupErr) throw new Error(webhookDupErr.message)
+
+          if (webhookDup) {
+            const prev = webhookDup.source_data
+            const updatedSourceData = {
+              ...(typeof prev === 'object' && prev !== null ? (prev as Record<string, unknown>) : {}),
+              meta_lead_id: lead.id,
+              meta_ad_id: lead.ad_id ?? null,
+              meta_adset_id: lead.adset_id ?? null,
+              meta_campaign_id: lead.campaign_id ?? null,
+              campaign_name: lead.campaign_name ?? null,
+            }
+            const { error: updErr } = await supabase
+              .from('leads')
+              .update({
+                source_data: updatedSourceData,
+                inquiry_date: metaInquiryDate,
+                ad_name: lead.ad_name ?? null,
+                rep_title: extracted.rep_title || null,
+              })
+              .eq('id', webhookDup.id)
+              .eq('tenant_id', TENANT_ID)
+            if (updErr) throw new Error(updErr.message)
+            totalSkipped++
+          } else {
+            const { error: leadErr } = await supabase.from('leads').insert({
+              tenant_id:           TENANT_ID,
+              customer_id:         customerId,
+              list_record_id:      listRecordId,
+              ad_name:             lead.ad_name ?? null,
+              inquiry_at:          inquiryAt,
+              inquiry_date:        metaInquiryDate,
+              source:              'meta_ads',
+              source_data:         {
+                field_data:       lead.field_data,
+                meta_lead_id:     lead.id,
+                meta_ad_id:       lead.ad_id ?? null,
+                meta_adset_id:    lead.adset_id ?? null,
+                meta_campaign_id: lead.campaign_id ?? null,
+                campaign_name:    lead.campaign_name ?? null,
+              },
+              status:              '未対応',
+              company_name:        extracted.company_name || null,
+              representative_name: extracted.representative_name || null,
+              rep_title:           extracted.rep_title || null,
+              phone_number:        phone,
+              prefecture:          extracted.prefecture || null,
+            })
+            if (leadErr) throw new Error(leadErr.message)
+            totalImported++
+          }
         }
       } catch (e) {
         totalFailed++

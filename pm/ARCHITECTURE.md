@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — システム設計図
 
-最終更新: 2026-05-10
+最終更新: 2026-05-11
 
 ---
 
@@ -48,10 +48,13 @@ Sooon-CRM/
 ├── src/
 │   ├── app/
 │   │   ├── (dashboard)/          # 画面
-│   │   │   ├── list/             # リード一覧
-│   │   │   ├── leads/            # リード詳細
+│   │   │   ├── list/             # リスト情報
+│   │   │   ├── leads/            # リード一覧・詳細
+│   │   │   │   └── inbox/        # 受信リード（Meta webhook）
+│   │   │   ├── calls/            # コール履歴
 │   │   │   ├── analytics/        # 分析画面
-│   │   │   └── ads/              # 広告マネージャー
+│   │   │   ├── ads/              # 広告マネージャー
+│   │   │   └── admin/sync/       # 手動差分同期UI
 │   │   └── api/
 │   │       ├── webhooks/
 │   │       │   ├── meta/         # Meta広告リード受信
@@ -59,7 +62,8 @@ Sooon-CRM/
 │   │       ├── admin/
 │   │       │   ├── backfill-fm-push/   # FM未同期リードを一括プッシュ
 │   │       │   ├── pull-meta-leads/    # Meta API からリードを能動取得
-│   │       │   ├── sync-from-fm/       # FM→CRM フル同期
+│   │       │   ├── sync-from-fm/       # FM→CRM リスト差分同期
+│   │       │   ├── sync-calls/         # FM→CRM コール履歴差分同期
 │   │       │   └── import-leads/       # CSV インポート
 │   │       ├── list-records/     # リスト一覧 API
 │   │       └── leads/            # リード API

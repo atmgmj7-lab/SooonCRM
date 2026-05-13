@@ -18,7 +18,18 @@ export async function GET(request: Request) {
   const to           = searchParams.get('to')           ?? ''
   const since        = searchParams.get('since')        ?? ''
   const until        = searchParams.get('until')        ?? ''
-  const tab          = searchParams.get('tab')           ?? 'all'
+  const tab          = searchParams.get('tab')          ?? 'all'
+  const sort_col     = searchParams.get('sort_col')     ?? 'created_at'
+  const sort_dir     = searchParams.get('sort_dir')     ?? 'desc'
+  const filter_prefecture = searchParams.get('prefecture') ?? ''
+  const ad_names_raw    = searchParams.get('ad_names')    ?? ''
+  const prefectures_raw = searchParams.get('prefectures') ?? ''
+  const statuses_raw    = searchParams.get('statuses')    ?? ''
+
+  const ALLOWED_SORT_COLS = ['created_at', 'inquiry_at', 'inquiry_date', 'ad_name', 'company_name', 'prefecture', 'status'] as const
+  type SortCol = typeof ALLOWED_SORT_COLS[number]
+  const safeCol: SortCol = (ALLOWED_SORT_COLS as readonly string[]).includes(sort_col) ? sort_col as SortCol : 'created_at'
+  const ascending = sort_dir === 'asc'
 
   const supabase = createAdminClient()
 
@@ -36,10 +47,13 @@ export async function GET(request: Request) {
   // メインクエリ（ページネーション付き）
   let mainQuery = supabase
     .from('leads')
-    .select('*', { count: 'exact' })
+    .select(
+      '*, list_records(ad_name, company_name, representative_name, prefecture, phone_numbers)',
+      { count: 'exact' },
+    )
     .eq('tenant_id', TENANT_ID)
     .or('phone_number.not.is.null,company_name.not.is.null,representative_name.not.is.null,ad_name.not.is.null')
-    .order('inquiry_date', { ascending: false })
+    .order(safeCol, { ascending, nullsFirst: false })
     .order('created_at', { ascending: false })
     .range((pageNum - 1) * limitNum, pageNum * limitNum - 1)
 
@@ -52,8 +66,17 @@ export async function GET(request: Request) {
   if (to)                      mainQuery = mainQuery.lte('inquiry_at', to + 'T23:59:59Z')
   if (since)                   mainQuery = mainQuery.gte('inquiry_date', since)
   if (until)                   mainQuery = mainQuery.lte('inquiry_date', until)
-  if (tab === 'new')             mainQuery = mainQuery.eq('status', '新規')
-  if (tab === 'done')            mainQuery = mainQuery.neq('status', '新規')
+  if (tab === 'new')           mainQuery = mainQuery.eq('status', '新規')
+  if (tab === 'done')          mainQuery = mainQuery.neq('status', '新規')
+  if (filter_prefecture)       mainQuery = mainQuery.eq('prefecture', filter_prefecture)
+
+  const ad_names_list    = ad_names_raw    ? ad_names_raw.split(',').filter(Boolean)    : []
+  const prefectures_list = prefectures_raw ? prefectures_raw.split(',').filter(Boolean) : []
+  const statuses_list    = statuses_raw    ? statuses_raw.split(',').filter(Boolean)    : []
+
+  if (ad_names_list.length > 0)    mainQuery = mainQuery.in('ad_name', ad_names_list)
+  if (prefectures_list.length > 0) mainQuery = mainQuery.in('prefecture', prefectures_list)
+  if (statuses_list.length > 0)    mainQuery = mainQuery.in('status', statuses_list)
 
   const { data: leads, count, error } = await mainQuery
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -100,6 +123,10 @@ export async function GET(request: Request) {
   if (tab === 'new')             summaryQuery = summaryQuery.eq('status', '新規')
   if (tab === 'done')            summaryQuery = summaryQuery.neq('status', '新規')
 
+  if (ad_names_list.length > 0)    summaryQuery = summaryQuery.in('ad_name', ad_names_list)
+  if (prefectures_list.length > 0) summaryQuery = summaryQuery.in('prefecture', prefectures_list)
+  if (statuses_list.length > 0)    summaryQuery = summaryQuery.in('status', statuses_list)
+
   const { data: summaryData } = await summaryQuery
 
   let newLeadCountQuery = supabase
@@ -120,8 +147,33 @@ export async function GET(request: Request) {
     ? Math.round((totalCallCount / summaryData.length) * 10) / 10
     : 0
 
+  type JoinedLeadRow = Record<string, unknown> & {
+    list_records?:
+      | {
+          ad_name?: string | null
+          company_name?: string | null
+          representative_name?: string | null
+          prefecture?: string | null
+          phone_numbers?: string[] | null
+        }
+      | null
+  }
+
+  const flatLeads = (leads ?? []).map((l: JoinedLeadRow) => {
+    const lr = l.list_records ?? null
+    return {
+      ...l,
+      ad_name:               l.ad_name               ?? lr?.ad_name               ?? null,
+      company_name:          l.company_name          ?? lr?.company_name          ?? null,
+      representative_name:   l.representative_name   ?? lr?.representative_name   ?? null,
+      prefecture:            l.prefecture            ?? lr?.prefecture            ?? null,
+      phone_number:          l.phone_number          ?? lr?.phone_numbers?.[0]   ?? null,
+      list_records:          undefined,
+    }
+  })
+
   return NextResponse.json({
-    leads: leads ?? [],
+    leads: flatLeads,
     pagination: {
       total:      count ?? 0,
       page:       pageNum,

@@ -45,6 +45,30 @@ export function ListAttrHeader({
       style={{ background: 'var(--color-white)', borderColor: 'var(--color-gray-200)' }}
     >
       <AttrCell label="顧客ID" value={record.customer_id as string} />
+      {record.ad_name ? (
+        <div className="flex flex-col gap-0.5 shrink-0">
+          <span className="text-[9px] font-medium uppercase tracking-wide" style={{ color: 'var(--color-gray-400)' }}>
+            広告名
+          </span>
+          <span
+            className="text-[11px] font-semibold tabular-nums"
+            style={{
+              color: 'var(--color-white)',
+              background: 'var(--color-blue)',
+              padding: '2px 8px',
+              borderRadius: 9999,
+              display: 'inline-block',
+              maxWidth: 200,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+            title={record.ad_name as string}
+          >
+            {record.ad_name as string}
+          </span>
+        </div>
+      ) : null}
       <AttrCell label="リスト譲渡日" value={record.list_handover_date as string} />
       <AttrCell label="リスト" value={record.list_name as string} />
       <AttrCell label="業種" value={record.industry as string} />

@@ -8,6 +8,7 @@ import { ListMainDetail } from './ListMainDetail'
 import { HistoryTabs } from './HistoryTabs'
 import { InquiryHistory } from './InquiryHistory'
 import { MemoArea } from './MemoArea'
+import { AdInquirySummary } from './AdInquirySummary'
 
 type Call = {
   id: string
@@ -428,6 +429,10 @@ export function ListDetailClient({
                 maxHeight: '100%',
               }}
             >
+              <AdInquirySummary
+                leads={leadsLocal}
+                fallbackAdName={(record.ad_name as string | null) ?? null}
+              />
               <InquiryHistory leads={leadsLocal} />
               <MemoArea
                 memo={memo}

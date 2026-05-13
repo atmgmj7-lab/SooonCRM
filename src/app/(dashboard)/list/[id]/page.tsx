@@ -74,11 +74,18 @@ export default async function ListDetailPage({
 
   if (error || !rec) notFound()
 
+  // leads.ad_name が null の場合は list_records.ad_name を fallback として使う
+  const recAdName = (rec as Record<string, unknown>).ad_name as string | null
+  const flatLeads = (leads ?? []).map((l) => ({
+    ...l,
+    ad_name: l.ad_name ?? recAdName ?? null,
+  }))
+
   return (
     <ListDetailClient
       record={rec as Record<string, unknown>}
       calls={(calls ?? []) as Call[]}
-      leads={(leads ?? []) as Lead[]}
+      leads={flatLeads as Lead[]}
     />
   )
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, SortAsc, SortDesc, X, Save } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { ColumnFilter } from '@/components/shared/ColumnFilter'
 import NewLeadsTab from './NewLeadsTab'
 
 type ListRecord = {
@@ -106,6 +107,14 @@ export default function ListPage() {
   const [resultFilter, setResultFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
+  const [selectedAdNames, setSelectedAdNames] = useState<string[]>([])
+  const [selectedPrefectures, setSelectedPrefectures] = useState<string[]>([])
+  const [selectedSources, setSelectedSources] = useState<string[]>([])
+  const [adNameValues, setAdNameValues] = useState<string[]>([])
+  const [prefectureValues, setPrefectureValues] = useState<string[]>([])
+  const [sourceValues, setSourceValues] = useState<string[]>([])
+  const [distinctLoading, setDistinctLoading] = useState(false)
+
   // Sort
   const [sorts, setSorts] = useState<SortKey[]>([{ field: 'created_at', dir: 'desc' }])
 
@@ -130,10 +139,35 @@ export default function ListPage() {
     const active = (overrideConditions ?? []).filter((c) => c.value.trim())
     if (active.length > 0) params.set('search', JSON.stringify(active))
 
+    if (selectedAdNames.length > 0) params.set('ad_names', selectedAdNames.join(','))
+    if (selectedPrefectures.length > 0) params.set('prefectures', selectedPrefectures.join(','))
+    if (selectedSources.length > 0) params.set('sources', selectedSources.join(','))
+
     // Sort
     params.set('sort', JSON.stringify(sorts))
     return `/api/list-records?${params}`
-  }, [q, resultFilter, statusFilter, sorts])
+  }, [q, resultFilter, statusFilter, sorts, selectedAdNames, selectedPrefectures, selectedSources])
+
+  useEffect(() => {
+    async function fetchDistinct() {
+      setDistinctLoading(true)
+      const [adRes, prefRes, srcRes] = await Promise.all([
+        fetch('/api/list-records/distinct-values?column=ad_name'),
+        fetch('/api/list-records/distinct-values?column=prefecture'),
+        fetch('/api/list-records/distinct-values?column=source'),
+      ])
+      const [adJson, prefJson, srcJson] = await Promise.all([
+        adRes.json() as Promise<{ values: string[] }>,
+        prefRes.json() as Promise<{ values: string[] }>,
+        srcRes.json() as Promise<{ values: string[] }>,
+      ])
+      setAdNameValues(adJson.values ?? [])
+      setPrefectureValues(prefJson.values ?? [])
+      setSourceValues(srcJson.values ?? [])
+      setDistinctLoading(false)
+    }
+    void fetchDistinct()
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -430,6 +464,27 @@ export default function ListPage() {
             <option value="active">active</option>
             <option value="inactive">inactive</option>
           </select>
+          <ColumnFilter
+            label="広告名"
+            values={adNameValues}
+            selected={selectedAdNames}
+            onChange={setSelectedAdNames}
+            loading={distinctLoading}
+          />
+          <ColumnFilter
+            label="都道府県"
+            values={prefectureValues}
+            selected={selectedPrefectures}
+            onChange={setSelectedPrefectures}
+            loading={distinctLoading}
+          />
+          <ColumnFilter
+            label="ソース"
+            values={sourceValues}
+            selected={selectedSources}
+            onChange={setSelectedSources}
+            loading={distinctLoading}
+          />
           {sorts.length > 0 && (
             <span className="text-[11px]" style={{ color: 'var(--color-gray-400)' }}>
               Shiftクリックで複合ソート
